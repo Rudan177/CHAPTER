@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>反馈系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @keyframes kuangjia {
+            0% {
+                opacity: 0;
+                filter: blur(20px);
+            }
+            50% {
+                opacity: 0.95; 
+                filter: blur(0.5px); 
+            }
+            100% {
+                opacity: 1; 
+                filter: blur(0px); 
+            }
+        }
+
+        :root {
+            --primary-color: #00AE00;
+            --primary-dark: #008C00;
+            --primary-light: #00AE90;
+            --accent-color: #10BF90;
+            --surface-color: #FFFFFF;
+            --background-color: #F5F5F5;
+            --surface-variant: #F0F0F0;
+            --text-primary: #000000;
+            --text-secondary: #424242;
+            --text-muted: #757575;
+            --divider-color: #E0E0E0;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.dark-theme {
+            --surface-color: #1A1A1A;
+            --background-color: #0D0D0D;
+            --surface-variant: #2A2A2A;
+            --text-primary: #e0e0e0;
+            --text-secondary: #B0B0B0;
+            --text-muted: #808080;
+            --divider-color: #333333;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, rgba(0, 174, 0, 0.1) 0%, rgba(16, 191, 144, 0.1) 100%),
+                radial-gradient(circle at 20% 50%, rgba(0, 174, 0, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(16, 191, 144, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(0, 174, 0, 0.03) 0%, transparent 30%),
+                radial-gradient(circle at 60% 70%, rgba(16, 191, 144, 0.03) 0%, transparent 30%);
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body:not(.light-theme) {
+                background: linear-gradient(135deg, rgba(0, 100, 0, 0.15) 0%, rgba(10, 80, 60, 0.15) 100%),
+                    radial-gradient(circle at 20% 50%, rgba(0, 100, 0, 0.08) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 80%, rgba(10, 80, 60, 0.08) 0%, transparent 50%),
+                    radial-gradient(circle at 40% 20%, rgba(0, 100, 0, 0.05) 0%, transparent 30%),
+                    radial-gradient(circle at 60% 70%, rgba(10, 80, 60, 0.05) 0%, transparent 30%);
+                background-color: #0a0a0a;
+            }
+
+            body:not(.light-theme) .card {
+                background: rgba(30, 30, 30, 0.6);
+                border: 2px solid rgba(255, 255, 255, 0.15);
+            }
+
+            body:not(.light-theme) .card-header {
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            body:not(.light-theme) .form-control {
+                background: rgba(30, 30, 30, 0.8);
+                border-color: rgba(255, 255, 255, 0.15);
+                color: #ffffff;
+            }
+
+            body:not(.light-theme) .form-control::placeholder {
+                color: #888;
+            }
+
+            body:not(.light-theme) .radio-option label {
+                background: rgba(30, 30, 30, 0.6);
+                border-color: rgba(255, 255, 255, 0.15);
+                color: #e0e0e0;
+            }
+
+            body:not(.light-theme) .radio-option input[type="radio"]:not(:checked) + label:hover {
+                border-color: #007a35;
+                background: transparent;
+            }
+
+            body:not(.light-theme) .btn-secondary {
+                background: rgba(40, 40, 40, 0.8);
+                color: #e0e0e0;
+            }
+
+            body:not(.light-theme) .radio-option input[type="radio"]:checked + label {
+                border-color: #007a35;
+                background: #007a35;
+            }
+
+            body:not(.light-theme) .btn-primary {
+                background: #007a35;
+            }
+
+            body:not(.light-theme) .card-header .material-icons {
+                color: #007a35;
+            }
+
+            body:not(.light-theme) .form-label .material-icons {
+                color: #007a35;
+            }
+
+            body:not(.light-theme) #contextMenu {
+                background: rgba(30, 30, 30, 0.95);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            body:not(.light-theme) .context-menu-item:hover {
+                background: rgba(0, 174, 0, 0.2);
+            }
+
+            body:not(.light-theme) .toast {
+                background: rgba(30, 30, 30, 0.95);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            body:not(.light-theme) .resize-handle {
+                background: rgba(255, 255, 255, 0.3);
+            }
+
+            body:not(.light-theme) .footer {
+                color: #888;
+            }
+        }
+
+        body.dark-theme {
+            background: linear-gradient(135deg, rgba(0, 100, 0, 0.15) 0%, rgba(10, 80, 60, 0.15) 100%),
+                radial-gradient(circle at 20% 50%, rgba(0, 100, 0, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(10, 80, 60, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(0, 100, 0, 0.05) 0%, transparent 30%),
+                radial-gradient(circle at 60% 70%, rgba(10, 80, 60, 0.05) 0%, transparent 30%);
+            background-color: #0a0a0a;
+        }
+
+        body.dark-theme .card {
+            background: rgba(30, 30, 30, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        body.dark-theme .card-header {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        body.dark-theme .form-control {
+            background: rgba(30, 30, 30, 0.8);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        body.dark-theme .form-control::placeholder {
+            color: #888;
+        }
+
+        body.dark-theme .radio-option label {
+            background: rgba(30, 30, 30, 0.6);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .radio-option input[type="radio"]:not(:checked) + label:hover {
+            border-color: #007a35;
+            background: transparent;
+        }
+
+        body.dark-theme .btn-secondary {
+            background: rgba(40, 40, 40, 0.8);
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .radio-option input[type="radio"]:checked + label {
+            border-color: #007a35;
+            background: #007a35;
+        }
+
+        body.dark-theme .btn-primary {
+            background: #007a35;
+        }
+
+        body.dark-theme .card-header .material-icons {
+            color: #007a35;
+        }
+
+        body.dark-theme .form-label .material-icons {
+            color: #007a35;
+        }
+
+        body.dark-theme #contextMenu {
+            background: rgba(30, 30, 30, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        body.dark-theme .context-menu-item:hover {
+            background: rgba(0, 174, 0, 0.2);
+        }
+
+        body.dark-theme .toast {
+            background: rgba(30, 30, 30, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        body.dark-theme .resize-handle {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .decoration {
+            position: fixed;
+            z-index: -1;
+            opacity: 1;
+            color: gray;
+            font-size: 20px;
+            font-weight: 900;
+            margin-bottom: 50px;
+            top: 1.8%;
+            left: 0%;
+            width: 100%;
+            text-align: center;
+        }
+
+        .main-container {
+            max-width: 800px;
+            margin: 55px auto 40px;
+            padding: 0 24px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.115);
+            border: 2px solid #00000050;
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            overflow: hidden;
+            opacity: 0;
+            animation: kuangjia 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .card-header {
+            padding: 16px 24px;
+            border-bottom: 2px solid #00000050;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .card-header .material-icons {
+            color: var(--primary-color);
+        }
+
+        .card-title {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .form-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-label .material-icons {
+            font-size: 18px;
+            color: var(--primary-color);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #00000050;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-family: inherit;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.115);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+        }
+
+        .form-control:hover {
+            border-color: var(--primary-light);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 174, 0, 0.15);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea.form-control {
+            resize: none;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .textarea-wrapper {
+            position: relative;
+        }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 5px;
+            background: var(--divider-color);
+            border-radius: 3px;
+            cursor: ns-resize;
+            transition: var(--transition);
+            opacity: 0.6;
+        }
+
+        .resize-handle:hover {
+            background: var(--primary-color);
+            opacity: 1;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+
+        .radio-option label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px;
+            border: 2px solid #00000050;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.115);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+        }
+
+        .radio-option input[type="radio"]:not(:checked) + label:hover {
+            border-color: #00AE00;
+            background: transparent;
+        }
+
+        .radio-option input[type="radio"]:checked + label {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: #FFFFFF;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            backdrop-filter: blur(10px);
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.115);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--divider-color);
+        }
+
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn.loading .material-icons {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .info-text {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .info-text .material-icons {
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .toast {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            top: auto !important;
+            left: auto !important;
+            min-width: 280px;
+            background: rgba(255, 255, 255, 0.115);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            border: 2px solid #00000050;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .toast.success .material-icons {
+            color: var(--primary-color);
+        }
+
+        .toast.error {
+            border-left: 4px solid #E53935;
+        }
+
+        .toast.error .material-icons {
+            color: #E53935;
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--primary-light);
+        }
+
+        .toast.info .material-icons {
+            color: var(--primary-light);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        #contextMenu {
+            position: fixed;
+            background: rgba(255, 255, 255, 0.115);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-md);
+            border: 2px solid #00000050;
+            box-shadow: var(--shadow-lg);
+            z-index: 10000;
+            min-width: 180px;
+            padding: 6px;
+            display: none;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(0, 174, 0, 0.1);
+            color: var(--primary-color);
+        }
+
+        .context-menu-item.disabled {
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .context-menu-item.disabled:hover {
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .context-menu-item .material-icons {
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .context-menu-item:hover .material-icons {
+            color: var(--primary-color);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: var(--divider-color);
+            margin: 6px 0;
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 2px solid #00000050;
+            margin-top: 24px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px 20px;
+            margin-top: 50px;
+            color: #666;
+            font-size: 14px;
+            line-height: 13px;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .float-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .float-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .float-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .float-btn .icon-lock {
+            width: 10px;
+            height: 10px;
+            fill: #ff4444;
+        }
+
+        .float-btn .icon-back-top {
+            display: none;
+        }
+
+        .float-btn .theme-icons {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .float-btn.scrolled .icon-back-top {
+            display: block;
+        }
+
+        .float-btn.scrolled .theme-icons {
+            display: none;
+        }
+
+        .float-btn.scrolled.theme-mode .icon-back-top {
+            display: none;
+        }
+
+        .float-btn.scrolled.theme-mode .theme-icons {
+            display: flex;
+        }
+
+        body.dark-theme .float-btn {
+            background: #007a35;
+        }
+
+        body.dark-theme .footer {
+            color: #888;
+        }
+
+        @media (max-width: 600px) {
+            .main-container {
+                margin-top: 45px;
+                padding: 0 16px;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+            }
+
+            .radio-option {
+                min-width: 100%;
+            }
+
+            .toast {
+                left: 16px !important;
+                right: 16px !important;
+                bottom: 16px !important;
+                min-width: auto;
+            }
+
+            .float-btn {
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 18px;
+                border-radius: 20px;
+            }
+
+            .float-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .float-btn .icon-lock {
+                width: 9px;
+                height: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="decoration">反馈工具</div>
+    <div id="contextMenu">
+        <div class="context-menu-item" data-action="back">
+            <span class="material-icons">arrow_back</span>
+            <span>返回</span>
+        </div>
+        <div class="context-menu-item" data-action="refresh">
+            <span class="material-icons">refresh</span>
+            <span>刷新</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" data-action="selectAll">
+            <span class="material-icons">select_all</span>
+            <span>全选</span>
+        </div>
+        <div class="context-menu-item" data-action="copy">
+            <span class="material-icons">content_copy</span>
+            <span>复制</span>
+        </div>
+        <div class="context-menu-item" data-action="paste">
+            <span class="material-icons">content_paste</span>
+            <span>粘贴</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons">edit</span>
+                    <span>反馈内容</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="form-section">
+                    <label class="form-label">
+                        <span class="material-icons">category</span>
+                        反馈类型
+                    </label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="feedbackType-bug" name="feedbackType" value="bug" checked>
+                            <label for="feedbackType-bug">反馈 Bug</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="feedbackType-feature" name="feedbackType" value="feature">
+                            <label for="feedbackType-feature">功能建议</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" id="severitySection">
+                    <label class="form-label" id="severityLabel">
+                        <span class="material-icons">signal_cellular_alt</span>
+                        严重程度
+                    </label>
+                    <div class="radio-group" id="severityOptions">
+                        <div class="radio-option">
+                            <input type="radio" id="severity-critical" name="severity" value="非常严重">
+                            <label for="severity-critical">非常严重</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="severity-high" name="severity" value="比较严重">
+                            <label for="severity-high">比较严重</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="severity-medium" name="severity" value="一般" checked>
+                            <label for="severity-medium">一般</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="severity-low" name="severity" value="不太严重">
+                            <label for="severity-low">不太严重</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="severity-none" name="severity" value="没啥影响">
+                            <label for="severity-none">没啥影响</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="description">
+                        <span class="material-icons">description</span>
+                        详细描述
+                    </label>
+                    <div class="textarea-wrapper">
+                        <textarea class="form-control" id="description" rows="5" placeholder="请详细描述您遇到的问题或建议..."></textarea>
+                        <div class="resize-handle" data-target="description"></div>
+                    </div>
+                </div>
+
+                <div class="form-section" id="environmentSection">
+                    <label class="form-label" for="environment">
+                        <span class="material-icons">devices</span>
+                        触发环境
+                    </label>
+                    <div class="textarea-wrapper">
+                        <textarea class="form-control" id="environment" rows="3" placeholder="描述触发Bug时的操作步骤和环境..."></textarea>
+                        <div class="resize-handle" data-target="environment"></div>
+                    </div>
+                    <p class="info-text">
+                        <span class="material-icons">info</span>
+                        描述触发Bug时的操作步骤和环境
+                    </p>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label" for="author">
+                        <span class="material-icons">person</span>
+                        署名（可选，留空则为"匿名"）
+                    </label>
+                    <input type="text" class="form-control" id="author" placeholder="您的署名">
+                </div>
+
+                <div class="footer-actions">
+                    <button class="btn btn-secondary" id="clearBtn">
+                        <span class="material-icons">delete</span>
+                        清空
+                    </button>
+                    <button class="btn btn-primary" id="saveBtn">
+                        <span class="material-icons">download</span>
+                        保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="float-btn" id="floatBtn">
+        <svg class="icon-back-top" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+            <path d="M160-760v-80h640v80H160Zm280 640v-408L336-424l-56-56 200-200 200 200-56 56-104-104v408h-80Z"/>
+        </svg>
+        <span class="theme-icons">
+            <svg class="icon-theme-logo" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                <path d="M324-111.5Q251-143 197-197t-85.5-127Q80-397 80-480t31.5-156Q143-709 197-763t127-85.5Q397-880 480-880t156 31.5Q709-817 763-763t85.5 127Q880-563 880-480t-31.5 156Q817-251 763-197t-127 85.5Q563-80 480-80t-156-31.5ZM520-163q119-15 199.5-104.5T800-480q0-123-80.5-212.5T520-797v634Z"/>
+            </svg>
+            <svg class="icon-lock" xmlns="http://www.w3.org/2000/svg" height="12px" viewBox="0 -960 960 960" width="12px" fill="#ff4444" style="display: none;">
+                <path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z"/>
+            </svg>
+        </span>
+    </button>
+    <footer class="footer">
+        <p>© 2026 ByRUDAN 保留所有权利。</p>
+        <p>联系方式：wyjcrtu@proton.me</p>
+        <p>反馈页版本 v2.0:06:RS14</p>
+    </footer>
+    <script src="fb.js"></script>
+</body>
+</html>
