@@ -207,24 +207,26 @@ class TTTApp {
             if (!this.isInfoExpanded) {
                 this.isInfoExpanded = true;
                 this.infoIframeContainer.classList.add('expanded');
+                const isMobile = window.innerWidth <= 600;
+                this.infoIframeContainer.style.bottom = isMobile ? '80px' : '15px';
             }
         });
 
         this.infoIframeContainer.addEventListener('mouseleave', () => {
             this.isInfoExpanded = false;
             this.infoIframeContainer.classList.remove('expanded');
+            this.infoIframeContainer.style.bottom = '-45px';
         });
 
         document.body.appendChild(this.infoIframeContainer);
 
-        this.infoIframeContainer.style.bottom = '-80px';
-        this.infoIframeContainer.style.opacity = '0';
+        this.infoIframeContainer.classList.add('initial-state');
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 this.infoIframeContainer.style.transition = 'bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease';
-                this.infoIframeContainer.style.bottom = '-45px';
-                this.infoIframeContainer.style.opacity = '1';
+                this.infoIframeContainer.classList.remove('initial-state');
+                this.infoIframeContainer.classList.add('visible-state');
                 
                 setTimeout(() => {
                     this.infoIframeContainer.style.transition = '';

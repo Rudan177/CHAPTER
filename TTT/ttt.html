@@ -375,12 +375,16 @@
         .toast.error .material-icons { color: #E53935; }
 
         .footer {
+            position: fixed;
+            bottom: 30px;
+            left: 0;
+            right: 0;
             text-align: center;
             padding: 5px 20px;
-            margin-top: 50px;
             color: #666;
             font-size: 14px;
             line-height: 13px;
+            z-index: 997;
         }
 
         .footer p {
@@ -468,7 +472,7 @@
             top: 100%;
             left: 0;
             width: 100%;
-            height: 30px;
+            height: 80px;
             pointer-events: auto;
         }
 
@@ -479,6 +483,16 @@
         .info-iframe-container:hover,
         .info-iframe-container.expanded {
             bottom: 15px;
+        }
+
+        .info-iframe-container.initial-state {
+            bottom: -80px;
+            opacity: 0;
+        }
+
+        .info-iframe-container.visible-state {
+            bottom: -45px;
+            opacity: 1;
         }
 
         .info-iframe-container.show {
@@ -734,6 +748,19 @@
             .radio-option { min-width: 100%; }
             .btn-group { flex-direction: column; }
             .float-btn { bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 25px; }
+
+            .info-iframe-container {
+                left: 20px;
+                right: 20px;
+                width: auto;
+                max-width: none;
+                transform: none;
+            }
+
+            .info-iframe-container:hover,
+            .info-iframe-container.expanded {
+                bottom: 80px;
+            }
         }
     </style>
 </head>
