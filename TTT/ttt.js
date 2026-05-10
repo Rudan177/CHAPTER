@@ -217,11 +217,19 @@ class TTTApp {
 
         document.body.appendChild(this.infoIframeContainer);
 
+        this.infoIframeContainer.style.bottom = '-80px';
+        this.infoIframeContainer.style.opacity = '0';
+
         requestAnimationFrame(() => {
-            this.infoIframeContainer.classList.add('slide-up');
-            setTimeout(() => {
-                this.infoIframeContainer.classList.remove('slide-up');
-            }, 500);
+            requestAnimationFrame(() => {
+                this.infoIframeContainer.style.transition = 'bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease';
+                this.infoIframeContainer.style.bottom = '-45px';
+                this.infoIframeContainer.style.opacity = '1';
+                
+                setTimeout(() => {
+                    this.infoIframeContainer.style.transition = '';
+                }, 500);
+            });
         });
 
         const container = this.infoContent.querySelector('.scrollable-content');
