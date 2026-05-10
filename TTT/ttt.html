@@ -474,9 +474,21 @@
             animation: iframeSlideOut 0.25s ease forwards;
         }
 
+        .info-iframe-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+
         @keyframes iframeSlideOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
+            0% { 
+                opacity: 1; 
+                bottom: 15px;
+            }
+            100% { 
+                opacity: 0; 
+                bottom: -60px;
+            }
         }
 
         .info-iframe-container iframe {
@@ -720,7 +732,7 @@
 
     <footer class="footer">
         <p>© 2026 ByRUDAN 保留所有权利。</p>
-        <p>版本号：v0.8:08-BS18</p>
+        <p>版本号：v0.9:09-BS120</p>
     </footer>
 
     <div class="info-iframe-container" id="infoIframeContainer">

@@ -184,18 +184,20 @@ class TTTApp {
     showInfoIframe(url) {
         if (!this.infoIframeContainer || !this.infoIframe) return;
         this.infoIframe.src = url;
-        this.infoIframeContainer.classList.remove('hiding');
+        this.infoIframeContainer.classList.remove('hiding', 'hidden');
         this.infoIframeContainer.classList.add('show');
         setTimeout(() => this.sendThemeToIframe(), 100);
     }
 
     hideInfoIframe() {
         if (!this.infoIframeContainer) return;
+        this.infoIframeContainer.classList.remove('hidden');
         this.infoIframeContainer.classList.add('hiding');
         this.infoIframeContainer.classList.remove('show');
         setTimeout(() => {
             if (this.infoIframe) this.infoIframe.src = '';
             this.infoIframeContainer.classList.remove('hiding', 'show');
+            this.infoIframeContainer.classList.add('hidden');
         }, 250);
     }
 
