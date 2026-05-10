@@ -217,6 +217,13 @@ class TTTApp {
 
         document.body.appendChild(this.infoIframeContainer);
 
+        requestAnimationFrame(() => {
+            this.infoIframeContainer.classList.add('slide-up');
+            setTimeout(() => {
+                this.infoIframeContainer.classList.remove('slide-up');
+            }, 500);
+        });
+
         const container = this.infoContent.querySelector('.scrollable-content');
         if (container) {
             container.addEventListener('wheel', function(e) { 
