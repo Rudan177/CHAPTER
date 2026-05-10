@@ -141,65 +141,101 @@ class TTTApp {
     }
 
     initInfoIframe() {
-        this.infoIframeContainer = document.getElementById('infoIframeContainer');
-        this.infoIframe = document.getElementById('infoIframe');
+        this.infoIframeContainer = null;
         this.isInfoExpanded = false;
+        this.loadInfoData();
+    }
 
-        if (this.infoIframeContainer) {
-            this.infoIframeContainer.addEventListener('mouseenter', () => {
-                if (!this.isInfoExpanded) {
-                    this.isInfoExpanded = true;
-                    this.infoIframeContainer.classList.add('expanded');
-                }
-            });
+    async loadInfoData() {
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-            this.infoIframeContainer.addEventListener('mouseleave', () => {
-                this.isInfoExpanded = false;
-                this.infoIframeContainer.classList.remove('expanded');
-            });
+        try {
+            const response = await fetch('https://caiyunzhou.github.io/SpecialCHAPTER/info/info_TTT.json?t=' + Date.now());
+            if (!response.ok) return;
+            const config = await response.json();
+            
+            const titleEmpty = !config.title || config.title.trim() === '';
+            const linkEmpty = !config.link || config.link.trim() === '';
+            const textEmpty = !config.text || config.text.trim() === '';
+            
+            if (titleEmpty && linkEmpty && textEmpty) return;
+
+            const hasTitle = config.title && config.title.trim() !== '';
+            const hasLinkText = config.link && config.link.trim() !== '' && config.text && config.text.trim() !== '';
+
+            if (!hasTitle && !hasLinkText) return;
+
+            this.createAndShowInfoIframe(config);
+        } catch (e) {
+            console.log('Failed to load info data');
+        }
+    }
+
+    createAndShowInfoIframe(config) {
+        this.infoIframeContainer = document.createElement('div');
+        this.infoIframeContainer.className = 'info-iframe-container';
+        this.infoIframeContainer.id = 'infoIframeContainer';
+
+        this.infoContent = document.createElement('div');
+        this.infoContent.className = 'info-content';
+
+        let contentHTML = '<h1></h1><div class="scrollable-content"><p><span></span></p></div>';
+        this.infoContent.innerHTML = contentHTML;
+
+        const hasTitle = config.title && config.title.trim() !== '';
+        const hasLinkText = config.link && config.link.trim() !== '' && config.text && config.text.trim() !== '';
+
+        if (hasTitle) {
+            const h1Element = this.infoContent.querySelector('h1');
+            h1Element.textContent = config.title;
         }
 
-        window.addEventListener('message', (e) => {
-            if (e.data === 'closeInfoIframe') {
-                this.hideInfoIframe();
-            } else if (e.data === 'noContent') {
-                this.hideInfoIframe();
-            } else if (e.data === 'requestTheme') {
-                this.sendThemeToIframe();
+        if (hasLinkText) {
+            const spanElement = this.infoContent.querySelector('p span');
+            spanElement.innerHTML = `<a href="${config.link}" target="_blank">${config.text}</a>`;
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'info-close-btn';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => this.hideInfoIframe());
+        this.infoContent.appendChild(closeBtn);
+
+        this.infoIframeContainer.appendChild(this.infoContent);
+
+        this.infoIframeContainer.addEventListener('mouseenter', () => {
+            if (!this.isInfoExpanded) {
+                this.isInfoExpanded = true;
+                this.infoIframeContainer.classList.add('expanded');
             }
         });
-    }
 
-    sendThemeToIframe() {
-        if (!this.infoIframe) return;
-        try {
-            const isDark = document.body.classList.contains('dark-theme');
-            const message = isDark ? 'theme-dark' : 'theme-light';
-            this.infoIframe.contentWindow.postMessage(message, '*');
-        } catch (e) {
-            console.log('iframe not ready');
+        this.infoIframeContainer.addEventListener('mouseleave', () => {
+            this.isInfoExpanded = false;
+            this.infoIframeContainer.classList.remove('expanded');
+        });
+
+        document.body.appendChild(this.infoIframeContainer);
+
+        const container = this.infoContent.querySelector('.scrollable-content');
+        if (container) {
+            container.addEventListener('wheel', function(e) { 
+                e.preventDefault(); 
+                container.scrollLeft += e.deltaY || e.deltaX; 
+            });
         }
     }
 
-    showInfoIframe(url) {
-        if (!this.infoIframeContainer || !this.infoIframe) return;
-        this.infoIframe.src = url;
-        this.infoIframeContainer.classList.remove('hiding', 'hidden');
-        this.infoIframeContainer.classList.add('show');
-        setTimeout(() => this.sendThemeToIframe(), 100);
-    }
+    showInfoIframe() {}
 
     hideInfoIframe() {
-        if (!this.infoIframeContainer) return;
-        this.infoIframeContainer.classList.remove('hidden');
-        this.infoIframeContainer.classList.add('hiding');
-        this.infoIframeContainer.classList.remove('show');
-        setTimeout(() => {
-            if (this.infoIframe) this.infoIframe.src = '';
-            this.infoIframeContainer.classList.remove('hiding', 'show');
-            this.infoIframeContainer.classList.add('hidden');
-        }, 250);
+        if (this.infoIframeContainer && this.infoIframeContainer.parentNode) {
+            this.infoIframeContainer.parentNode.removeChild(this.infoIframeContainer);
+            this.infoIframeContainer = null;
+        }
     }
+
+    sendThemeToIframe() {}
 
     initContextMenu() {
         new ContextMenu();

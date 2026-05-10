@@ -475,9 +475,7 @@
         }
 
         .info-iframe-container.hidden {
-            opacity: 0;
-            pointer-events: none;
-            visibility: hidden;
+            display: none !important;
         }
 
         @keyframes iframeSlideOut {
@@ -496,6 +494,93 @@
             height: 100%;
             border: none;
             border-radius: inherit;
+        }
+
+        .info-content {
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            border-radius: 28px;
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-color, #ffffff);
+            color: var(--text-color, #1a1a1a);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        body.dark-theme .info-content {
+            --bg-color: #303134;
+            --text-color: #e8eaed;
+        }
+
+        .info-content h1 {
+            font-size: 36px;
+            text-align: left;
+            margin: 0;
+            margin-left: 8px;
+            line-height: 40px;
+            flex: 0 0 auto;
+            padding-right: 8px;
+        }
+
+        .info-content .scrollable-content {
+            flex: 1;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            margin: 0 8px;
+        }
+
+        .info-content .scrollable-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .info-content p {
+            font-size: 24px;
+            margin: 0;
+            line-height: 40px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .info-content a {
+            color: var(--text-color, #1a1a1a);
+            text-decoration: none;
+        }
+
+        .info-content a:hover {
+            opacity: 0.7;
+            text-decoration: underline;
+        }
+
+        .info-close-btn {
+            background: none;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s;
+            line-height: 40px;
+            margin-left: 12px;
+            margin-right: 8px;
+            flex: 0 0 auto;
+            padding: 0;
+        }
+
+        body.dark-theme .info-close-btn {
+            color: #9aa0a6;
+        }
+
+        .info-close-btn:hover {
+            color: #1a1a1a;
+        }
+
+        body.dark-theme .info-close-btn:hover {
+            color: #e8eaed;
         }
 
         #contextMenu {
@@ -732,12 +817,8 @@
 
     <footer class="footer">
         <p>© 2026 ByRUDAN 保留所有权利。</p>
-        <p>版本号：v0.9:09-BS120</p>
+        <p>版本号：v0.9:09-BS12</p>
     </footer>
-
-    <div class="info-iframe-container" id="infoIframeContainer">
-        <iframe id="infoIframe" src="info/info.html" frameborder="0"></iframe>
-    </div>
 
     <button class="float-btn" id="floatBtn">
         <svg class="icon-back-top" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">

@@ -88,7 +88,12 @@ window.onload = async function() {
         } else { 
             document.querySelector('.info-container').style.display = 'none'; 
         } 
-    } 
+        return;
+    }
+
+    if (window.parent !== window) { 
+        window.parent.postMessage('contentReady', '*');
+    }
 
     var container = document.querySelector('.scrollable-content'); 
     if (container) {
