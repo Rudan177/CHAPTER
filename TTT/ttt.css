@@ -321,8 +321,9 @@ textarea.form-control::-webkit-scrollbar {
 }
 
 .output-text {
-    background: rgba(0, 174, 0, 0.08);
-    border: 2px dashed var(--primary-light);
+    background: rgba(255, 255, 255, 0.115);
+    backdrop-filter: blur(10px);
+    border: 2px solid #00000050;
     border-radius: var(--radius-md);
     padding: 16px;
     min-height: 60px;
@@ -332,6 +333,7 @@ textarea.form-control::-webkit-scrollbar {
     font-size: 14px;
     line-height: 1.6;
     color: var(--text-primary);
+    transition: var(--transition);
 }
 
 .copy-btn {
@@ -380,16 +382,11 @@ textarea.form-control::-webkit-scrollbar {
 .toast.error .material-icons { color: #E53935; }
 
 .footer {
-    position: fixed;
-    bottom: 30px;
-    left: 0;
-    right: 0;
     text-align: center;
-    padding: 5px 20px;
+    padding: 20px 20px 40px;
     color: #666;
     font-size: 14px;
-    line-height: 13px;
-    z-index: 997;
+    line-height: 1.6;
 }
 
 .footer p {
@@ -714,8 +711,8 @@ body.dark-theme .radio-option input[type="radio"]:checked + label {
 body.dark-theme .btn-primary { background: var(--primary-color); }
 
 body.dark-theme .output-text {
-    background: rgba(0, 122, 53, 0.15);
-    border-color: var(--primary-color);
+    background: rgba(30, 30, 30, 0.8);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 body.dark-theme .float-btn { background: var(--primary-color); }
