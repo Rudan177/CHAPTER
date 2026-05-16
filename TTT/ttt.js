@@ -141,7 +141,7 @@ class TTTApp {
     }
 
     initInfoIframe() {
-        this.infoIframeContainer = null;
+        this.infoIframeContainer = document.getElementById('infoContainer');
         this.isInfoExpanded = false;
         this.loadInfoData();
     }
@@ -150,95 +150,99 @@ class TTTApp {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         try {
-            const response = await fetch('https://caiyunzhou.github.io/SpecialCHAPTER/info/info_TTT.json?t=' + Date.now());
+            const response = await fetch('../info/info_TTT.json?t=' + Date.now());
             if (!response.ok) return;
             const config = await response.json();
             
-            const titleEmpty = !config.title || config.title.trim() === '';
-            const linkEmpty = !config.link || config.link.trim() === '';
-            const textEmpty = !config.text || config.text.trim() === '';
-            
-            if (titleEmpty && linkEmpty && textEmpty) return;
-
             const hasTitle = config.title && config.title.trim() !== '';
-            const hasLinkText = config.link && config.link.trim() !== '' && config.text && config.text.trim() !== '';
+            const hasText = config.text && config.text.trim() !== '';
+            
+            if (!hasTitle && !hasText) return;
 
-            if (!hasTitle && !hasLinkText) return;
-
-            this.createAndShowInfoIframe(config);
+            this.showInfoContainer(config);
         } catch (e) {
             console.log('Failed to load info data');
         }
     }
 
-    createAndShowInfoIframe(config) {
-        this.infoIframeContainer = document.createElement('div');
-        this.infoIframeContainer.className = 'info-iframe-container';
-        this.infoIframeContainer.id = 'infoIframeContainer';
-
-        this.infoContent = document.createElement('div');
-        this.infoContent.className = 'info-content';
-
-        let contentHTML = '<h1></h1><div class="scrollable-content"><p><span></span></p></div>';
-        this.infoContent.innerHTML = contentHTML;
+    showInfoContainer(config) {
+        const container = this.infoIframeContainer;
+        if (!container) return;
 
         const hasTitle = config.title && config.title.trim() !== '';
-        const hasLinkText = config.link && config.link.trim() !== '' && config.text && config.text.trim() !== '';
+        const hasLink = config.link && config.link.trim() !== '';
+        const hasText = config.text && config.text.trim() !== '';
+        const dividers = container.querySelectorAll('.info-divider');
 
         if (hasTitle) {
-            const h1Element = this.infoContent.querySelector('h1');
+            const h1Element = container.querySelector('.info-container h1');
             h1Element.textContent = config.title;
+            h1Element.style.display = 'block';
+        } else {
+            const h1Element = container.querySelector('.info-container h1');
+            h1Element.style.display = 'none';
         }
 
-        if (hasLinkText) {
-            const spanElement = this.infoContent.querySelector('p span');
-            spanElement.innerHTML = `<a href="${config.link}" target="_blank">${config.text}</a>`;
+        if (hasText) {
+            const spanElement = container.querySelector('.info-container p span');
+            if (hasLink) {
+                spanElement.innerHTML = `<a href="${config.link}" target="_blank">${config.text}</a>`;
+            } else {
+                spanElement.textContent = config.text;
+            }
+            container.querySelector('.scrollable-content').style.display = 'block';
+        } else {
+            container.querySelector('.scrollable-content').style.display = 'none';
         }
 
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'info-close-btn';
-        closeBtn.innerHTML = '&times;';
-        closeBtn.addEventListener('click', () => this.hideInfoIframe());
-        this.infoContent.appendChild(closeBtn);
+        // 控制分隔线显示
+        if (dividers[0]) {
+            dividers[0].style.display = (hasTitle && hasText) ? 'block' : 'none';
+        }
+        if (dividers[1]) {
+            dividers[1].style.display = hasText ? 'block' : 'none';
+        }
 
-        this.infoIframeContainer.appendChild(this.infoContent);
+        const closeBtn = container.querySelector('.info-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hideInfoIframe());
+        }
 
-        this.infoIframeContainer.addEventListener('mouseenter', () => {
+        container.addEventListener('mouseenter', () => {
             if (!this.isInfoExpanded) {
                 this.isInfoExpanded = true;
-                this.infoIframeContainer.classList.add('expanded');
+                container.classList.add('expanded');
                 const isMobile = window.innerWidth <= 600;
-                this.infoIframeContainer.style.bottom = isMobile ? '80px' : '15px';
+                container.style.bottom = isMobile ? '80px' : '15px';
             }
         });
 
-        this.infoIframeContainer.addEventListener('mouseleave', () => {
+        container.addEventListener('mouseleave', () => {
             this.isInfoExpanded = false;
-            this.infoIframeContainer.classList.remove('expanded');
-            this.infoIframeContainer.style.bottom = '-45px';
+            container.classList.remove('expanded');
+            container.style.bottom = '-45px';
         });
 
-        document.body.appendChild(this.infoIframeContainer);
-
-        this.infoIframeContainer.classList.add('initial-state');
+        container.style.display = 'block';
+        container.classList.add('initial-state');
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                this.infoIframeContainer.style.transition = 'bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease';
-                this.infoIframeContainer.classList.remove('initial-state');
-                this.infoIframeContainer.classList.add('visible-state');
+                container.style.transition = 'bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease';
+                container.classList.remove('initial-state');
+                container.classList.add('visible-state');
                 
                 setTimeout(() => {
-                    this.infoIframeContainer.style.transition = '';
+                    container.style.transition = '';
                 }, 500);
             });
         });
 
-        const container = this.infoContent.querySelector('.scrollable-content');
-        if (container) {
-            container.addEventListener('wheel', function(e) { 
+        const scrollableContent = container.querySelector('.scrollable-content');
+        if (scrollableContent) {
+            scrollableContent.addEventListener('wheel', function(e) { 
                 e.preventDefault(); 
-                container.scrollLeft += e.deltaY || e.deltaX; 
+                scrollableContent.scrollLeft += e.deltaY || e.deltaX; 
             });
         }
     }
@@ -246,13 +250,12 @@ class TTTApp {
     showInfoIframe() {}
 
     hideInfoIframe() {
-        if (this.infoIframeContainer && this.infoIframeContainer.parentNode) {
-            this.infoIframeContainer.parentNode.removeChild(this.infoIframeContainer);
-            this.infoIframeContainer = null;
+        if (this.infoIframeContainer) {
+            this.infoIframeContainer.style.display = 'none';
+            this.infoIframeContainer.style.bottom = '';
+            this.isInfoExpanded = false;
         }
     }
-
-    sendThemeToIframe() {}
 
     initContextMenu() {
         new ContextMenu();
@@ -276,7 +279,6 @@ class TTTApp {
                 document.body.classList.remove('dark-theme');
                 document.body.classList.add('light-theme');
             }
-            self.sendThemeToIframe();
         };
 
         const updateLockIcon = () => {
@@ -542,7 +544,6 @@ let app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app = new TTTApp();
-    app.showInfoIframe('info/info.html');
 });
 
 function convert() { app.convert(); }
