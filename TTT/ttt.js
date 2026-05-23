@@ -119,7 +119,7 @@ class ContextMenu {
                 }
                 break;
             case 'feedback':
-                window.location.href = 'FB.html';
+                window.location.href = '../FB/FB.html';
                 break;
         }
     }
