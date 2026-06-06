@@ -1,0 +1,807 @@
+.menu-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
+}
+
+.menu-list {
+    transition: none;
+}
+
+.menu-btn {
+    background: var(--menu-bg);
+    backdrop-filter: blur(10px);
+    width: 80px;
+    height: 50px;
+    border: none;
+    border-radius: 28px;
+    padding: 10px 20px;
+    font-family: var(--font-family);
+    font-weight: 900;
+    font-size: 20px;
+    color: var(--menu-text);
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-btn svg {
+    fill: var(--menu-icon-color);
+}
+
+.menu-btn.hidden {
+    opacity: 0;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: btnFadeOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.menu-btn:active {
+    transform: scale(0.1);
+    transition: transform 0.2s ease;
+}
+
+.menu-btn:hover {
+    background: rgba(0, 174, 144, 0.5);
+    transform: scale(1.05);
+}
+
+.menu-btn.appearing {
+    animation: btnFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes springOpen {
+    0% {
+        width: 80px;
+        height: 50px;
+        border-radius: 28px;
+    }
+
+    65% {
+        width: 155px;
+        height: calc(var(--menu-height, 670px) + 10px);
+        border-radius: 10px;
+    }
+
+    82% {
+        width: 148px;
+        height: calc(var(--menu-height, 670px) - 5px);
+        border-radius: 13px;
+    }
+
+    100% {
+        width: 150px;
+        height: var(--menu-height, 670px);
+        border-radius: 12px;
+    }
+}
+
+@keyframes springClose {
+    0% {
+        width: 150px;
+        height: var(--menu-height, 670px);
+        border-radius: 12px;
+    }
+
+    10% {
+        width: 146px;
+        height: calc(var(--menu-height, 670px) * 0.94);
+        border-radius: 14px;
+    }
+
+    30% {
+        width: 120px;
+        height: calc(var(--menu-height, 670px) * 0.6);
+        border-radius: 22px;
+    }
+
+    50% {
+        width: 82px;
+        height: 52px;
+        border-radius: 29px;
+    }
+
+    65% {
+        width: 78px;
+        height: 48px;
+        border-radius: 30px;
+    }
+
+    80% {
+        width: 81px;
+        height: 51px;
+        border-radius: 27px;
+    }
+
+    90% {
+        width: 79px;
+        height: 49px;
+        border-radius: 28px;
+    }
+
+    100% {
+        width: 80px;
+        height: 50px;
+        border-radius: 28px;
+    }
+}
+
+@keyframes btnFadeOut {
+
+    0%,
+    20% {
+        opacity: 1;
+    }
+
+    25% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes btnFadeIn {
+
+    0%,
+    75% {
+        opacity: 0;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes menuContentFadeIn {
+
+    0%,
+    20% {
+        opacity: 0;
+    }
+
+    25% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes menuContentFadeOut {
+
+    0%,
+    75% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.menu-list {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80px;
+    height: 50px;
+    background: var(--menu-bg);
+    backdrop-filter: blur(10px);
+    border: none;
+    border-radius: 28px;
+    padding: 0px 0;
+    list-style: none;
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+}
+
+.menu-list.active {
+    opacity: 1;
+    visibility: visible;
+    animation: springOpen 0.5s ease-out forwards;
+}
+
+.menu-list.closing {
+    opacity: 1;
+    visibility: visible;
+    animation: springClose 0.5s linear forwards;
+}
+
+body>*:not(.menu-container) {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.menu-active>*:not(.menu-container) {
+    transform: translateX(80px);
+}
+
+.menu-list li {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 18px;
+    border-radius: 12px;
+    color: var(--menu-text);
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+}
+
+.menu-list.active li {
+    color: var(--menu-text);
+    animation: menuContentFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.menu-list.closing li {
+    animation: menuContentFadeOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.menu-list li:hover {
+    background: var(--menu-hover);
+    border-radius: 12px;
+    transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-close-btn {
+    display: none;
+}
+
+.menu-list li span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.menu-list li span svg {
+    display: block;
+}
+
+.menu-list li.current-section {
+    background: var(--menu-hover);
+    border-radius: 12px;
+}
+
+.menu-list li.zhengwen-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-list li.zhengwen-item.current-section {
+    padding-bottom: 5px;
+}
+
+.menu-list li.zhengwen-item.current-section .date-selector {
+    opacity: 1;
+    max-height: 60px;
+}
+
+.date-selector {
+    overflow: hidden;
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.date-selector.show {
+    opacity: 1;
+    max-height: 60px;
+    margin-top: 8px;
+}
+
+.date-jump-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border: 1px solid rgba(0, 174, 144, 0.3);
+    border-radius: 8px;
+    background: rgba(0, 174, 144, 0.1);
+    font-family: var(--font-family);
+    font-size: 13px;
+    color: var(--menu-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.date-jump-btn:hover {
+    background: rgba(0, 174, 144, 0.2);
+    border-color: rgba(0, 174, 144, 0.5);
+}
+
+.date-jump-btn:active {
+    transform: scale(0.95);
+}
+
+/* 日历弹出遮罩 */
+.calendar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s ease;
+}
+
+.calendar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.calendar-popup {
+    background: var(--menu-bg);
+    border: 1px solid rgba(0, 174, 144, 0.25);
+    border-radius: 16px;
+    padding: 16px;
+    width: 280px;
+    max-width: 90vw;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+    transform: scale(0.9) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.calendar-overlay.active .calendar-popup {
+    transform: scale(1) translateY(0);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.calendar-title {
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--menu-text);
+}
+
+.calendar-nav {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(0, 174, 144, 0.15);
+    color: var(--menu-text);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.calendar-nav:hover {
+    background: rgba(0, 174, 144, 0.3);
+}
+
+.calendar-nav:active {
+    transform: scale(0.9);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.calendar-cell {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family);
+    font-size: 14px;
+    color: var(--menu-text);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.3;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.calendar-cell.available {
+    opacity: 1;
+}
+
+.calendar-cell.available:hover {
+    background: rgba(0, 174, 144, 0.25);
+}
+
+.calendar-cell.selected {
+    background: rgba(0, 174, 144, 0.4);
+    font-weight: 700;
+    opacity: 1;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.calendar-action-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: 1px solid rgba(0, 174, 144, 0.25);
+    border-radius: 8px;
+    background: rgba(0, 174, 144, 0.08);
+    font-family: var(--font-family);
+    font-size: 13px;
+    color: var(--menu-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.calendar-action-btn:hover {
+    background: rgba(0, 174, 144, 0.2);
+}
+
+.calendar-action-btn:active {
+    transform: scale(0.96);
+}
+
+.menu-xiaozi {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    font-family: var(--font-family);
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--menu-text);
+    cursor: default;
+    border-radius: 0 !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.menu-list.closing .menu-xiaozi {
+    opacity: 0;
+}
+
+@media (max-width: 768px) {
+    body.menu-active>*:not(.menu-container) {
+        transform: none;
+    }
+
+    .date-jump-btn {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .menu-container {
+        top: auto;
+        bottom: 10px;
+        left: 50%;
+        margin-left: -40px;
+        width: 80px;
+        height: 50px;
+        transform-origin: center bottom;
+    }
+
+    .menu-container.expanded {
+        position: fixed;
+        top: auto;
+        bottom: 10%;
+        left: 10%;
+        margin-left: 0;
+        width: 80%;
+        height: 50%;
+    }
+
+    .menu-container.expanding {
+        animation: menuExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes menuExpand {
+        0% {
+            width: 80px;
+            height: 50px;
+            bottom: 10px;
+            border-radius: 28px;
+            left: 50%;
+            margin-left: -40px;
+        }
+
+        65% {
+            width: 82%;
+            height: 52%;
+            bottom: 9%;
+            border-radius: 14px;
+            left: 9%;
+            margin-left: 0;
+        }
+
+        80% {
+            width: 79%;
+            height: 49%;
+            bottom: 10.5%;
+            border-radius: 17px;
+            left: 10.5%;
+        }
+
+        100% {
+            width: 80%;
+            height: 50%;
+            bottom: 10%;
+            border-radius: 16px;
+            left: 10%;
+            margin-left: 0;
+        }
+    }
+
+    @keyframes menuCollapse {
+        0% {
+            width: 80%;
+            height: 50%;
+            bottom: 10%;
+            border-radius: 16px;
+            left: 10%;
+            margin-left: 0;
+        }
+
+        10% {
+            width: 76%;
+            height: 47%;
+            bottom: 10%;
+            border-radius: 18px;
+            left: 12%;
+            margin-left: 0;
+        }
+
+        30% {
+            width: 55%;
+            height: 30%;
+            bottom: 10%;
+            border-radius: 22px;
+            left: 22.5%;
+            margin-left: 0;
+        }
+
+        50% {
+            width: 82px;
+            height: 52px;
+            bottom: 10px;
+            border-radius: 29px;
+            left: 50%;
+            margin-left: -41px;
+        }
+
+        65% {
+            width: 78px;
+            height: 48px;
+            bottom: 11px;
+            border-radius: 30px;
+            left: 50%;
+            margin-left: -39px;
+        }
+
+        80% {
+            width: 81px;
+            height: 51px;
+            bottom: 9px;
+            border-radius: 27px;
+            left: 50%;
+            margin-left: -40px;
+        }
+
+        90% {
+            width: 79px;
+            height: 49px;
+            bottom: 10px;
+            border-radius: 28px;
+            left: 50%;
+            margin-left: -40px;
+        }
+
+        100% {
+            width: 80px;
+            height: 50px;
+            bottom: 10px;
+            border-radius: 28px;
+            left: 50%;
+            margin-left: -40px;
+        }
+    }
+
+    .menu-container.collapsing {
+        position: fixed;
+        top: auto;
+        bottom: 10%;
+        left: 10%;
+        margin-left: 0;
+        width: 80%;
+        height: 50%;
+        animation: menuCollapse 0.7s linear forwards;
+    }
+
+    .menu-btn {
+        width: 80px;
+        height: 50px;
+        border-radius: 28px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .menu-container.expanded .menu-btn {
+        width: 100%;
+        height: 100%;
+        border-radius: 16px;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .menu-btn svg {
+        transition: opacity 0.2s ease;
+    }
+
+    .menu-container.expanded .menu-btn svg {
+        opacity: 0;
+    }
+
+    .menu-list {
+        width: 80px;
+        height: 50px;
+        border-radius: 28px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        visibility: hidden;
+        animation: none;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .menu-container.expanded .menu-list {
+        width: 100%;
+        height: 100%;
+        border-radius: 16px;
+        padding: 0 0 10px;
+        overflow-y: auto;
+        opacity: 1;
+        visibility: visible;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .menu-container.expanded .menu-list li {
+        opacity: 0;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li {
+        animation: menuContentFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(2) {
+        animation-delay: 0.08s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(3) {
+        animation-delay: 0.11s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(4) {
+        animation-delay: 0.14s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(5) {
+        animation-delay: 0.17s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(6) {
+        animation-delay: 0.20s;
+    }
+
+    .menu-container.expanded.content-ready .menu-list li:nth-child(7) {
+        animation-delay: 0.23s;
+    }
+
+    .menu-list.active,
+    .menu-list.closing {
+        animation: none !important;
+    }
+
+    .menu-close-btn {
+        display: flex;
+        justify-content: center;
+        padding: 12px 8px 8px;
+        cursor: grab;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .menu-close-btn:hover {
+        background: transparent !important;
+    }
+
+    .menu-close-btn span {
+        display: inline-block;
+        width: 36px;
+        height: 4px;
+        background: var(--menu-text);
+        border-radius: 2px;
+        opacity: 0.5;
+    }
+
+    .menu-close-btn svg {
+        display: none;
+    }
+
+    .menu-list li {
+        padding: 12px 16px;
+        font-size: 15px;
+        margin: 2px 8px;
+        border-radius: 8px;
+    }
+
+    .menu-list li svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .menu-list li:first-child {
+        margin-top: 0;
+    }
+
+    .menu-xiaozi {
+        font-size: 13px;
+        padding: 10px 0;
+        margin-top: 4px;
+    }
+
+    body.menu-active>*:not(.menu-container) {
+        transform: none;
+    }
+
+    body.menu-active .menu-btn {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.menu-list li.menu-lianjie a,
+.menu-list li.menu-lianjie a:link,
+.menu-list li.menu-lianjie a:visited,
+.menu-list li.menu-lianjie a:active {
+    color: var(--menu-text) !important;
+    text-decoration: none !important;
+}

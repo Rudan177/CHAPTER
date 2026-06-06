@@ -1,0 +1,309 @@
+.bangdan-container {
+    width: 75%;
+    margin: 0 auto 50px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: left;
+    animation: kuangjia 0.6s ease-out 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.bangdan-chart {
+    flex: none;
+    width: 45%;
+    overflow: visible;
+}
+
+.bangdan-list {
+    flex: none;
+    width: 45%;
+}
+
+.bangdan-subtitle {
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.divider {
+    background: linear-gradient(180deg, transparent, #555555, transparent);
+    border-radius: 1px;
+}
+
+.card {
+    background: var(--chart-bg);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+.kaPianBiaoTi {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin-top: -10px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: left;
+}
+
+/* 柱状图容器 */
+.chart-container {
+    position: relative;
+    height: 300px;
+    padding-top: 35px;
+    padding-bottom: 60px;
+    margin: 20px 0;
+    overflow: visible;
+}
+
+.zhuLie {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    height: 100%;
+    gap: 40px;
+    overflow: visible;
+}
+
+.zhu {
+    width: 50px;
+    background: var(--text-muted);
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    transition: all 0.6s ease;
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: bottom;
+}
+
+.zhu.huoDong {
+    opacity: 1;
+    transform: scaleY(1);
+}
+
+.zhuBiaoQian {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.2;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zhu:nth-child(odd) .zhuBiaoQian {
+    bottom: -30px;
+}
+
+.zhu:nth-child(even) .zhuBiaoQian {
+    bottom: -48px;
+}
+
+.zhuShuZi {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.zanZhuZhu {
+    background: rgba(0, 174, 0, 0.75);
+    backdrop-filter: blur(4px);
+}
+
+.zanZhuZhu:nth-child(2n) {
+    background: rgba(0, 174, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+.zanZhuZhu:nth-child(3n) {
+    background: rgba(0, 174, 0, 0.75);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .zanZhuZhu {
+    background: rgba(0, 174, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .zanZhuZhu:nth-child(2n) {
+    background: rgba(0, 174, 0, 0.35);
+    backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .zanZhuZhu:nth-child(3n) {
+    background: rgba(0, 174, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+.zanZhuXiangMu {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.zanZhuXiangMu:last-child {
+    border-bottom: none;
+}
+
+.zanZhuPaiMing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.zanZhuMingCheng {
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+    margin-left: 12px;
+    font-size: 0.95rem;
+}
+
+.zanZhuJinE {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .bangdan-container {
+        width: 90%;
+        margin: 20px auto;
+        overflow: visible;
+    }
+
+    .bangdan-chart,
+    .bangdan-list {
+        width: 100%;
+        overflow: visible;
+    }
+
+    .chart-container {
+        height: 250px;
+    }
+
+    .zhu {
+        width: 30px;
+    }
+
+    .zhuBiaoQian {
+        font-size: 0.7rem;
+    }
+
+    .zhuShuZi {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+
+    .kaPianBiaoTi {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .bangdan-container {
+        width: 92%;
+        padding: 15px;
+        flex-direction: column;
+        gap: 25px;
+        overflow: visible;
+    }
+
+    .chart-container {
+        height: 250px;
+        padding-top: 45px;
+        padding-bottom: 60px;
+        overflow: visible;
+    }
+
+    .zhuLie {
+        gap: 12px;
+        overflow: visible;
+    }
+
+    .zhu {
+        width: 26px;
+    }
+
+    .zhuBiaoQian {
+        font-size: 0.55rem;
+        max-width: 40px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .zhu:nth-child(odd) .zhuBiaoQian {
+        bottom: -25px;
+    }
+
+    .zhu:nth-child(even) .zhuBiaoQian {
+        bottom: -40px;
+    }
+
+    .zhuShuZi {
+        font-size: 0.7rem;
+        top: -25px;
+    }
+
+    .bangdan-subtitle {
+        font-size: 1rem;
+        margin-top: 15px;
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+        text-align: center;
+    }
+
+    .zanZhuXiangMu {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .zanZhuPaiMing {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .zanZhuMingCheng {
+        font-size: 0.95rem;
+        margin-left: 12px;
+    }
+
+    .zanZhuJinE {
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+}

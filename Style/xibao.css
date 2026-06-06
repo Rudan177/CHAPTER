@@ -1,0 +1,480 @@
+.xibao {
+    width: 75%;
+    height: 100px;
+    position: relative;
+    margin: 50px auto;
+    padding: 50px 0;
+    border-radius: 12px;
+    background: var(--xibao-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.xibao .xibaozi {
+    font-family: var(--font-family);
+    font-weight: 900;
+    font-size: 50px;
+    text-align: center;
+    color: #ffd700;
+    text-shadow:
+        0 0 10px #ff0000,
+        0 0 20px #ff0000,
+        0 0 30px #ff0000,
+        0 0 40px #ffd700,
+        0 0 70px #ffd700,
+        0 0 90px #ffd700;
+    animation: titlePulse 1s 1 alternate;
+}
+
+.xibao .ziguding {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-family);
+    font-weight: 900;
+    font-size: 50px;
+    text-align: center;
+    color: #ffd700;
+    text-shadow:
+        0 0 10px #ff0000,
+        0 0 20px #ff0000,
+        0 0 30px #ff0000,
+        0 0 40px #ffd700,
+        0 0 70px #ffd700,
+        0 0 90px #ffd700;
+}
+
+.xibao .xibaoxiao {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-family);
+    font-weight: 900;
+    font-size: 30px;
+    text-align: center;
+    color: #ffd700;
+    text-shadow:
+        0 0 10px #ff0000,
+        0 0 20px #ff0000,
+        0 0 30px #ff0000,
+        0 0 40px #ffd700,
+        0 0 70px #ffd700,
+        0 0 90px #ffd700;
+}
+
+.xibaoxin-title {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-family);
+    font-weight: 700;
+    font-size: 26px;
+    text-align: center;
+    color: #ffffff;
+    letter-spacing: 2px;
+}
+
+.xibaoxin-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    font-family: var(--font-family);
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 2;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.xibaoxin-content a {
+    color: #ffd700;
+    text-decoration: none;
+    border-bottom: 1px dashed #ffd700;
+    transition: all 0.3s ease;
+}
+
+.xibaoxin-content a:hover {
+    color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+.xibao-update {
+    background: linear-gradient(180deg, #ffffff 0%, #90EE90 100%) !important;
+}
+
+[data-theme="dark"] .xibao-update {
+    background: linear-gradient(180deg, #006400 0%, #000000 100%) !important;
+}
+
+.xibao-update .xibaoxin-title,
+.xibao-update .xibaoxin-content {
+    color: #000000;
+    text-shadow: none;
+}
+
+[data-theme="dark"] .xibao-update .xibaoxin-title,
+[data-theme="dark"] .xibao-update .xibaoxin-content {
+    color: #90EE90;
+}
+
+.xibao-update .xibaoxin-content a {
+    color: #006400;
+    border-bottom-color: #006400;
+}
+
+[data-theme="dark"] .xibao-update .xibaoxin-content a {
+    color: #90EE90;
+    border-bottom-color: #90EE90;
+}
+
+.xibao-update .xibaoxin-content a:hover {
+    color: #004d00;
+}
+
+[data-theme="dark"] .xibao-update .xibaoxin-content a:hover {
+    color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+.xibao-update .xibaoxin-detail {
+    color: rgba(0, 100, 0, 0.7);
+}
+
+[data-theme="dark"] .xibao-update .xibaoxin-detail {
+    color: rgba(144, 238, 144, 0.6);
+}
+
+.xibaoxin-detail {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85%;
+    font-family: var(--font-family);
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes titlePulse {
+    0% {
+        text-shadow: none;
+    }
+
+    100% {
+        text-shadow: 0 0 10px #ffd700;
+    }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 100% 100%;
+    }
+}
+
+.xibao-slider-container {
+    width: 75%;
+    margin: 50px auto;
+    position: relative;
+}
+
+.xibao-slider-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--xibao-bg);
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.xibao-slider-track {
+    display: flex;
+    transition: transform 0.4s ease-in-out;
+}
+
+.xibao-slider-track .xibao {
+    min-width: 100%;
+    margin: 0;
+    flex-shrink: 0;
+    border-radius: 0;
+}
+
+.xibao-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.xibao-slider-prev {
+    left: 10px;
+}
+
+.xibao-slider-next {
+    right: 10px;
+}
+
+.xibao-slider-btn:hover svg {
+    transform: scale(1.2);
+}
+
+.xibao-slider-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.xibao-slider-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+}
+
+.xibao-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.xibao-dot.active {
+    width: 18px;
+    background: #ffffff;
+    border-radius: 3px;
+}
+
+.xibao-dot:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.rainbow {
+    font-family: var(--font-family);
+    font-weight: 900;
+    font-size: 50px;
+    text-align: center;
+    padding: 20px;
+}
+
+.rainbow-text {
+    background: linear-gradient(90deg,
+            magenta, orange, yellow, green, blue, indigo, violet, pink, cyan, magenta);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow:
+        0 0 10px transparent;
+    animation: rainbow-flow 5s linear infinite, shanyao 0.25s steps(1) infinite;
+}
+
+@keyframes rainbow-flow {
+    0% {
+        background-position: 0% 0%;
+        font-size: 50px;
+    }
+
+    50% {
+        background-position: 100% 0%;
+        font-size: 50px;
+    }
+
+    100% {
+        background-position: 200% 0%;
+        font-size: 50px;
+    }
+}
+
+@keyframes shanyao {
+    0% {
+        font-size: 50px;
+    }
+
+    50% {
+        font-size: 80px;
+    }
+
+    100% {
+        font-size: 20px;
+    }
+}
+
+.closeBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    background-color: transparent;
+    color: #fff;
+    cursor: pointer;
+    font-size: 16px;
+    border: none;
+    padding: 0;
+    transition: background-color 0.2s;
+    animation: anniudong 0.25s steps(150) 1;
+    z-index: 20;
+}
+
+.closeBtn:hover {
+    background-color: #ff9999;
+    color: var(--text-primary);
+}
+
+.custom-frame.hidden {
+    display: none;
+}
+
+@keyframes anniudong {
+    0% {
+        top: 28px;
+        right: 28px;
+    }
+
+    100% {
+        top: 10px;
+        right: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .xibao {
+        width: 100%;
+        height: 120px;
+        padding: 30px 0;
+    }
+
+    .xibao-slider-container {
+        width: 90%;
+    }
+
+    .xibao-slider-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+    .xibao-slider-prev {
+        left: 5px;
+    }
+
+    .xibao-slider-next {
+        right: 5px;
+    }
+
+    .xibao .xibaozi,
+    .xibao .ziguding {
+        font-size: 32px;
+    }
+
+    .xibao .xibaoxiao {
+        font-size: 20px;
+    }
+
+    .xibaoxin-title {
+        font-size: 22px;
+    }
+
+    .xibaoxin-content {
+        font-size: 15px;
+        width: 85%;
+        line-height: 1.6;
+    }
+
+    .xibaoxin-detail {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .xibao {
+        width: 100%;
+        height: 130px;
+        padding: 20px 0;
+    }
+
+    .xibao-slider-container {
+        width: 95%;
+    }
+
+    .xibao-slider-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .xibao-slider-prev {
+        left: 5px;
+    }
+
+    .xibao-slider-next {
+        right: 5px;
+    }
+
+    .xibao .xibaozi,
+    .xibao .ziguding {
+        font-size: 24px;
+    }
+
+    .xibao .xibaoxiao {
+        font-size: 16px;
+    }
+
+    .xibaoxin-title {
+        font-size: 18px;
+        top: 12px;
+    }
+
+    .xibaoxin-content {
+        font-size: 13px;
+        width: 88%;
+        line-height: 1.5;
+    }
+
+    .xibaoxin-detail {
+        font-size: 10px;
+        bottom: 10px;
+    }
+}

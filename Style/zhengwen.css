@@ -1,0 +1,384 @@
+.zhufu-container {
+    width: 75%;
+    margin: 0 auto 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.zhufu {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.zhufuvid {
+    width: 40%;
+    margin: 0 auto;
+    max-width: 600px;
+    display: block;
+    border-radius: 12px;
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.zhufu a {
+    color: white;
+    text-align: center;
+    font-family: var(--font-family);
+    font-size: 24px;
+    background-color: #00AE00;
+    border-radius: 12px;
+    text-decoration: none;
+    padding: 10px 6px;
+}
+
+.zhufu a:hover {
+    color: white;
+    background-color: #00AE00;
+    border-radius: 12px;
+    text-decoration: none;
+    padding: 10px 6px;
+    animation: lianjie 0.25s steps(1500) 1;
+}
+
+@keyframes lianjie {
+    0% {
+        color: #00AE00;
+        background-color: transparent;
+        border-radius: 60px;
+        padding: 60px;
+    }
+
+    10% {
+        color: #00AE0099;
+        background-color: transparent;
+        border-radius: 4px;
+        padding: 0.5px 0.5px;
+    }
+
+    50% {
+        color: #00AE0099;
+        background-color: transparent;
+        border-radius: 6px;
+        padding: 6px 2px;
+    }
+
+    90% {
+        color: #00AE0050;
+        background-color: #00AE0050;
+        border-radius: 10px;
+        padding: 8px 4px;
+    }
+
+    100% {
+        color: white;
+        background-color: #00AE00;
+        border-radius: 12px;
+        padding: 10px 6px;
+    }
+}
+
+.zhengwen-container {
+    width: 75%;
+    margin: 0 auto 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.zhengwen {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: left;
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.zhengwen h1 {
+    font-size: 28px;
+    color: var(--text-primary);
+    margin-top: 20px;
+    margin-bottom: 5px;
+    text-align: left;
+    font-family: var(--font-family);
+    font-weight: bold;
+}
+
+.zhengwen h2 {
+    font-size: 26px;
+    color: var(--text-secondary);
+    text-indent: 0.5em;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    text-align: left;
+    font-family: var(--font-family);
+    font-weight: bold;
+}
+
+.zhengwen h3 {
+    font-size: 26px;
+    font-weight: bold;
+    color: var(--text-secondary);
+    text-indent: 1.5em;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    text-align: left;
+    font-family: var(--font-family);
+}
+
+.zhengwen .h3s {
+    font-size: 26px;
+    color: var(--text-secondary);
+    text-indent: 2em;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    text-align: left;
+    font-family: var(--font-family);
+    font-weight: normal;
+}
+
+.zhengwen .se {
+    font-size: 12px;
+    color: var(--text-hint);
+    text-indent: 0em;
+    margin-top: -12px;
+    margin-bottom: 2px;
+    text-align: left;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: light;
+}
+
+.zhengwen p {
+    font-size: 24px;
+    color: var(--text-secondary);
+    text-indent: 2em;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    text-align: left;
+    font-family: var(--font-family);
+    font-weight: normal;
+}
+
+.zhengwen ul {
+    margin: 15px 0;
+    padding-left: 25px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.zhengwen li {
+    font-size: 24px;
+    color: var(--text-secondary);
+    text-indent: 0em;
+    line-height: 1.25;
+    margin-left: 0;
+    margin-bottom: 15px;
+    text-align: left;
+    font-family: var(--font-family);
+    padding-left: 5px;
+    box-sizing: border-box;
+}
+
+.zhengwen a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.zhengwen a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.zhengwen .line {
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+}
+
+.zhengwen .xiaozi {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 20px;
+    line-height: 12px;
+    font-family: Arial, sans-serif;
+}
+
+.pinglun-container {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.pinglun {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: left;
+    animation: kuangjia 0.6s ease-out 1;
+}
+
+.pinglun h1 {
+    font-size: 20px;
+    color: var(--text-primary);
+    margin-top: -18px;
+    margin-bottom: -18px;
+    text-align: center;
+    font-family: var(--font-family);
+    font-weight: bold;
+}
+
+.pinglun h2 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-indent: 0.5em;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    text-align: left;
+    font-family: var(--font-family);
+    font-weight: normal;
+}
+
+.pinglun p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    line-height: 1;
+    text-indent: 1em;
+    margin-bottom: 10px;
+    text-align: left;
+    font-family: var(--font-family);
+}
+
+.pinglun .pb {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1;
+    text-indent: 2em;
+    margin-bottom: 10px;
+    text-align: left;
+    font-family: var(--font-family);
+}
+
+.pinglun .se {
+    font-size: 12px;
+    color: var(--text-hint);
+    margin-top: 0px;
+    margin-bottom: 2px;
+    line-height: 1;
+    text-indent: 2em;
+    margin-bottom: 10px;
+    text-align: left;
+    text-align: left;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: light;
+}
+
+.pinglun .line {
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+}
+
+@media (max-width: 768px) {
+    .zhufu-container,
+    .zhengwen-container {
+        width: 90%;
+        margin: 20px auto;
+        overflow: visible;
+    }
+
+    .zhufu,
+    .zhengwen {
+        padding: 20px;
+    }
+
+    .zhengwen h1 {
+        font-size: 22px;
+    }
+
+    .zhengwen h2 {
+        font-size: 20px;
+    }
+
+    .zhengwen h3,
+    .zhengwen .h3s {
+        font-size: 18px;
+    }
+
+    .zhengwen p {
+        font-size: 16px;
+        text-indent: 1.5em;
+    }
+
+    .zhengwen ul {
+        margin: 10px 0;
+        padding-left: 20px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .zhengwen li {
+        font-size: 16px;
+        margin-left: 0;
+        padding-left: 5px;
+        box-sizing: border-box;
+    }
+
+    .zhufuvid {
+        width: 90%;
+    }
+}
+
+@media (max-width: 480px) {
+    .zhufu-container,
+    .zhengwen-container {
+        width: 92%;
+        padding: 15px;
+        flex-direction: column;
+        gap: 25px;
+        overflow: visible;
+    }
+
+    .zhufu,
+    .zhengwen {
+        padding: 15px;
+        overflow: hidden;
+    }
+
+    .zhengwen h1 {
+        font-size: 18px;
+    }
+
+    .zhengwen h2 {
+        font-size: 16px;
+    }
+
+    .zhengwen h3,
+    .zhengwen .h3s {
+        font-size: 15px;
+    }
+
+    .zhengwen p {
+        font-size: 14px;
+    }
+
+    .zhengwen ul {
+        margin: 8px 0;
+        padding-left: 18px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .zhengwen li {
+        font-size: 14px;
+        margin-left: 0;
+        margin-bottom: 8px;
+        padding-left: 3px;
+        box-sizing: border-box;
+    }
+}
