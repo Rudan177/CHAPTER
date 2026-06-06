@@ -1,6 +1,6 @@
 // 版本信息统一管理
 const SITE_VERSION = {
-    style: '1.4.5',
+    style: '1.4.7',
     lastUpdate: '2026年6月6日'
 };
 

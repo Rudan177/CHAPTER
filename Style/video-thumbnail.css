@@ -1,0 +1,25 @@
+/* 视频缩略图样式 - 点击跳转到视频链接 */
+.video-thumbnail-link {
+    display: block;
+    width: 40%;
+    max-width: 600px;
+    margin: 10px auto;
+    cursor: pointer;
+    text-decoration: none;
+    transition: filter 0.3s ease;
+}
+
+.video-thumbnail-link .video-thumbnail {
+    width: 100%;
+    display: block;
+}
+
+.video-thumbnail-link:hover {
+    filter: brightness(0.85);
+}
+
+@media (max-width: 768px) {
+    .video-thumbnail-link {
+        width: 90%;
+    }
+}
