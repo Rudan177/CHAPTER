@@ -10,6 +10,7 @@ let zanZhuShuJu = [
 // 渲染赞助榜单柱状图
 function xuanRanZanZhuBangDanZhuZhuangTu() {
     const rongQi = document.getElementById('zanZhuBangDanZhuZhuangTu');
+    if (!rongQi) return;
     rongQi.innerHTML = '';
 
     // 找出最大值用于比例计算
@@ -49,6 +50,7 @@ function xuanRanZanZhuBangDanZhuZhuangTu() {
 // 渲染赞助榜单列表
 function xuanRanZanZhuBangDanLieBiao() {
     const rongQi = document.getElementById('zanZhuBangDanLieBiao');
+    if (!rongQi) return;
     rongQi.innerHTML = '';
 
     zanZhuShuJu.forEach(xiangMu => {

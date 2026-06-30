@@ -1,4 +1,5 @@
-// 主题切换与字体切换
+// 主题切换与字体切换（交互事件）
+// 注意：首屏主题/字体已由 <head> 内联脚本提前应用
 const themeToggle = document.getElementById('themeToggle');
 const html = document.documentElement;
 
@@ -53,19 +54,8 @@ function toggleFont() {
     localStorage.setItem('font', newFont);
 }
 
-const savedFont = localStorage.getItem('font');
-if (savedFont) {
-    applyFont(savedFont);
-} else {
-    applyFont('hmsc');
-}
-
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
-    applyTheme(savedTheme);
-} else {
-    applyTheme(getAutoTheme());
-}
+// 同步UI图标与当前主题
+updateThemeToggleUI(html.getAttribute('data-theme'));
 updateLockIndicator();
 
 themeToggle.addEventListener('click', (e) => {
