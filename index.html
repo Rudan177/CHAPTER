@@ -5,6 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHAPTER</title>
+    <!-- 极简隐藏样式：默认不生效（media=not all），由下方脚本按需激活 -->
+    <style id="minimalistHide" media="not all">
+        .xibao-slider-container,
+        .zhufu-container,
+        .bangdan-container {
+            display: none !important;
+        }
+    </style>
     <link rel="stylesheet" href="Style/base.css">
     <link rel="stylesheet" href="Style/menu.css">
     <link rel="stylesheet" href="Style/xibao.css">
@@ -31,8 +39,12 @@
             if (savedFont) {
                 html.setAttribute('data-font', savedFont);
             }
-            // 极简模式状态提前检查（在其他脚本渲染前）
-            window.minimalistEnabled = localStorage.getItem('minimalist') === 'true';
+            // 极简模式：在 body 解析前激活隐藏样式
+            var isMinimalist = localStorage.getItem('minimalist') === 'true';
+            window.minimalistEnabled = isMinimalist;
+            if (isMinimalist) {
+                document.getElementById('minimalistHide').media = 'all';
+            }
         })();
     </script>
 </head>

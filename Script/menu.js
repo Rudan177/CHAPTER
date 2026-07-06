@@ -12,13 +12,34 @@ function closeMenu() {
         menuContainer.classList.remove('expanded');
     } else {
         if (!menuList.classList.contains('active')) return;
+        var els = document.querySelectorAll('.dakuang,.decoration,.zhengwen-container,.zhufu-container,.xibao-slider-container,.bangdan-container,footer');
+        // 设 inline 起始状态（和 CSS 一致），带上 transition
+        for (var i = 0; i < els.length; i++) {
+            els[i].style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            els[i].style.transform = 'translateX(84px)';
+        }
+        // 强制回流确认当前状态
+        void document.body.offsetHeight;
+        // 改为目标值——transition 开始生效
+        for (var j = 0; j < els.length; j++) {
+            els[j].style.transform = 'translateX(0)';
+        }
+        // 移除 menu-shifted（will-change 已去掉，没有 GPU 负担了）
         document.body.classList.remove('menu-shifted');
+        // 元素归位和菜单收起同时开始
         menuList.classList.add('closing');
         menuList.classList.remove('active');
-        setTimeout(() => {
+        // 过渡完成后清理 inline 样式
+        setTimeout(function () {
+            for (var k = 0; k < els.length; k++) {
+                els[k].style.transform = '';
+                els[k].style.transition = '';
+            }
+        }, 320);
+        setTimeout(function () {
             menuBtn.classList.remove('hidden');
-        }, 280);
-        setTimeout(() => {
+        }, 250);
+        setTimeout(function () {
             menuList.classList.remove('closing');
         }, 400);
     }
