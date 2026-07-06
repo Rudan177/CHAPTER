@@ -31,6 +31,8 @@
             if (savedFont) {
                 html.setAttribute('data-font', savedFont);
             }
+            // 极简模式状态提前检查（在其他脚本渲染前）
+            window.minimalistEnabled = localStorage.getItem('minimalist') === 'true';
         })();
     </script>
 </head>

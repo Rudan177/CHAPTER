@@ -20,7 +20,11 @@
     function applyMinimalist(on) {
         var sw = document.getElementById('minimalistSwitch');
         if (on) {
-            // 开启极简：从DOM移除元素，停止图片/视频加载
+            // 开启极简：先停掉喜报滑块的自动播放定时器
+            if (typeof window.stopXibaoAutoplay === 'function') {
+                window.stopXibaoAutoplay();
+            }
+            // 从DOM移除元素，停止图片/视频加载
             savedNodes = [];
             var targets = getTargets();
             for (var i = 0; i < targets.length; i++) {
@@ -63,6 +67,13 @@
             }
             savedNodes = [];
             if (sw) sw.classList.remove('active');
+            // 重新初始化因极简跳过加载的组件
+            if (typeof window.initXibaoSlider === 'function') {
+                window.initXibaoSlider();
+            }
+            if (typeof window.renderBangdan === 'function') {
+                window.renderBangdan();
+            }
         }
         localStorage.setItem(STORAGE_KEY, on ? 'true' : 'false');
         // 刷新滚动高亮
@@ -71,9 +82,8 @@
         }
     }
 
-    // 初始化：从localStorage读取并执行
-    var saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'true') {
+    // 初始化：使用已提前设置的全局标志，避免重复读取 localStorage
+    if (window.minimalistEnabled) {
         applyMinimalist(true);
     }
 

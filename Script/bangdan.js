@@ -85,8 +85,15 @@ function geShiHuaShuZi(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-// 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', function () {
+// 暴露渲染函数，供极简模式切换时重新渲染
+window.renderBangdan = function () {
     xuanRanZanZhuBangDanZhuZhuangTu();
     xuanRanZanZhuBangDanLieBiao();
+};
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function () {
+    // 极简模式下跳过榜单渲染（元素会被移除，无需执行 DOM 操作）
+    if (window.minimalistEnabled) return;
+    window.renderBangdan();
 });
