@@ -5,7 +5,7 @@ const zhengwenData = [
     <h1>2026年7月6日 星期一</h1>
     <h2>听全文</h2>
     <audio controls class="audio-player" preload="metadata">
-        <source src="audio/260706.MP3" type="audio/mpeg">
+        <source src="audio/260706.mp3" type="audio/mpeg">
         您的浏览器不支持音频播放。
     </audio>
     <h2>创作相关</h2>
