@@ -23,7 +23,7 @@
 }
 
 [data-font="serif"] {
-    --font-family: serif, sans-serif;
+    --font-family: 'NotoSerif', 'HMSC', serif, sans-serif;
 }
 
 [data-theme="dark"] {
@@ -61,6 +61,14 @@
     src: url('../font/RUDAN.otf') format('opentype');
     font-style: normal;
     font-weight: 900;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'NotoSerif';
+    src: url('../font/NotoSerif.otf') format('opentype');
+    font-style: normal;
+    font-weight: normal;
     font-display: swap;
 }
 

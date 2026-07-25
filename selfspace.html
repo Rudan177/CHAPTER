@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SELFSPACE</title>
+    <link rel="stylesheet" href="ss/base.css">
+    <link rel="stylesheet" href="Style/menu.css">
+    <link rel="stylesheet" href="Style/zhengwen.css">
+    <link rel="stylesheet" href="Style/image-preview.css">
+    <link rel="stylesheet" href="Style/footer.css">
+    <link rel="stylesheet" href="Style/video-thumbnail.css">
+    <link rel="preload" href="font/HarmonyOS_SansSC.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="font/RUDAN.otf" as="font" type="font/otf" crossorigin>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="ss/search.css">
+    <link rel="stylesheet" href="ss/menu.css">
+</head>
+<body>
+    <div class="dakuang">
+        <div class="ultra">SELFSPACE</div>
+        <div class="pro">畅 所 欲 言</div>
+        <!-- SS 简洁菜单 -->
+        <div class="ss-menu-btn" id="ssMenuBtn">
+            <span class="material-icons ss-menu-icon ss-menu-hamburger">menu</span>
+            <span class="material-icons ss-menu-icon ss-menu-close">close</span>
+        </div>
+        <div class="ss-menu-panel" id="ssMenuPanel">
+            <button class="ss-menu-item" id="ssThemeItem"></button>
+            <button class="ss-menu-item ss-menu-font-item" id="ssFontItem">Aa</button>
+        </div>
+    </div>
+    <div class="decoration">SELFSPACE</div>
+    <div class="search">
+        <div class="search-box">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" class="search-input" placeholder="搜索" id="searchInput">
+            <button class="search-clear-btn" id="searchClearBtn" title="清除">
+                <span class="material-icons">close</span>
+            </button>
+            <button class="search-time-btn" id="searchTimeBtn" title="仅搜索日期">
+                <span class="material-icons">schedule</span>
+            </button>
+        </div>
+        <div class="no-result" id="noResult">无匹配结果</div>
+    </div>
+    <div class="zhengwen-container">
+    </div>
+    <script src="wenben/ss.js" defer></script>
+    <script src="Script/theme.js" defer></script>
+    <script src="ss/version.js" defer></script>
+    <script src="Script/xibao-slider.js" defer></script>
+    <script src="Script/image-preview.js" defer></script>
+    <script src="ss/search.js"></script>
+    <script src="ss/menu.js"></script>
+
+    <footer>
+        <div class="footp">
+            许可证：ABCD-26W08A<br>
+            <span id="footLastUpdate"></span><br>
+            <span id="footVersion"></span><br>
+            © 2026 ByRUDAN 保留所有权利。
+        </div>
+    </footer>
+</body>
+</html>

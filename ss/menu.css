@@ -1,0 +1,164 @@
+/* ---- SS 简洁菜单 ---- */
+
+.ss-menu-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 10000;
+    transition: all 0.3s ease;
+}
+
+.ss-menu-btn .ss-menu-icon {
+    position: absolute;
+    font-size: 24px;
+    color: var(--text-primary);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ss-menu-btn .ss-menu-hamburger {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+.ss-menu-btn .ss-menu-close {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.3);
+}
+
+.ss-menu-btn.open .ss-menu-hamburger {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.3);
+}
+
+.ss-menu-btn.open .ss-menu-close {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
+/* ---- 弹出面板 ---- */
+
+.ss-menu-panel {
+    position: absolute;
+    bottom: 44px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    opacity: 0;
+    transform: translateY(16px);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 9999;
+}
+
+.ss-menu-panel.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* 子按钮依次出现效果 */
+.ss-menu-panel.open .ss-menu-item:nth-child(1) {
+    transition-delay: 0.05s;
+}
+
+.ss-menu-panel.open .ss-menu-item:nth-child(2) {
+    transition-delay: 0.1s;
+}
+
+.ss-menu-item {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--text-secondary);
+    font-size: 24px;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+/* 让 Material Icons 继承按钮字号，与汉堡图标统一 */
+.ss-menu-item .material-icons {
+    font-size: inherit;
+}
+
+/* 按钮下方文字标签 */
+.ss-menu-item::after {
+    content: attr(data-label);
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-family);
+    font-size: 13px;
+    color: var(--text-hint);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+/* 锁定状态：右上角小锁图标 */
+.ss-menu-item .lock-icon {
+    display: none;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    fill: var(--menu-icon-color);
+}
+
+.ss-menu-item.locked .lock-icon {
+    display: inline;
+}
+
+/* 字体按钮：Aa 图标 */
+.ss-menu-font-item {
+    font-family: var(--font-family);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .ss-menu-btn {
+        width: 24px;
+        height: 24px;
+    }
+
+    .ss-menu-btn .ss-menu-icon {
+        font-size: 22px;
+    }
+
+    .ss-menu-panel {
+        bottom: 42px;
+        right: 8px;
+        gap: 6px;
+    }
+
+    .ss-menu-item {
+        width: 24px;
+        height: 24px;
+        font-size: 22px;
+    }
+
+    .ss-menu-font-item {
+        font-size: 12px;
+    }
+}
