@@ -1,6 +1,7 @@
 // 正文数据 - 从 JSON 动态加载
 let zhengwenData = [];
 
+// 构建内联内容（string 或 token 数组 → DOM 节点追加到 parent）
 function buildInline(parent, content) {
     if (typeof content === 'string') {
         parent.appendChild(document.createTextNode(content));
@@ -55,6 +56,7 @@ function buildInline(parent, content) {
     }
 }
 
+// 创建块级元素（每个 block = {tag: content}）
 function createBlock(block) {
     const [tag, val] = Object.entries(block)[0];
     switch (tag) {
@@ -108,23 +110,28 @@ function createBlock(block) {
             el.textContent = val;
             return el;
         }
-        case 'audio':
+        case 'audio': {
+            // audio 在 article 级别处理，此处不生成
             return null;
+        }
         default:
             return null;
     }
 }
 
+// 创建单篇文章 DOM
 function createArticleElement(article) {
     const div = document.createElement('div');
     div.className = 'zhengwen';
 
+    // 标题
     if (article.date) {
         const h1 = document.createElement('h1');
         h1.textContent = article.date;
         div.appendChild(h1);
     }
 
+    // audio（放在 h1 之后，h2 之前）
     if (article.audio) {
         const audio = document.createElement('audio');
         audio.controls = true;
@@ -138,6 +145,7 @@ function createArticleElement(article) {
         div.appendChild(audio);
     }
 
+    // blocks
     if (article.blocks) {
         for (const block of article.blocks) {
             const el = createBlock(block);
@@ -148,6 +156,7 @@ function createArticleElement(article) {
     return div;
 }
 
+// 渐进式渲染
 function renderZhengwen() {
     const container = document.querySelector('.zhengwen-container');
     if (!container || !zhengwenData.length) return;
@@ -171,9 +180,10 @@ function renderZhengwen() {
     requestAnimationFrame(renderBatch);
 }
 
+// 动态加载
 async function loadZhengwen() {
     try {
-        const res = await fetch('wenben/ss.json');
+        const res = await fetch('wenben/chapter.json');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         zhengwenData = await res.json();
         renderZhengwen();
