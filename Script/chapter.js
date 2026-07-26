@@ -40,6 +40,18 @@ function buildInline(parent, content) {
                     parent.appendChild(el);
                     break;
                 }
+                case 'fn': {
+                    const el = document.createElement('sup');
+                    el.textContent = '[' + (val && val.id != null ? val.id : '?') + ']';
+                    parent.appendChild(el);
+                    break;
+                }
+                case 'code': {
+                    const el = document.createElement('code');
+                    el.textContent = val;
+                    parent.appendChild(el);
+                    break;
+                }
                 case 'img': {
                     const img = document.createElement('img');
                     img.src = val || '';
@@ -73,6 +85,17 @@ function createBlock(block) {
         case 'p': {
             const el = document.createElement('p');
             buildInline(el, val);
+            const fns = [];
+            if (Array.isArray(val)) val.forEach(it => { if (it && it.fn) fns.push(it.fn) });
+            if (fns.length) {
+                const se = document.createElement('p');
+                se.className = 'se';
+                se.textContent = '注释：' + fns.map(f => '[' + f.id + '] ' + f.text).join(' ');
+                const frag = document.createDocumentFragment();
+                frag.appendChild(el);
+                frag.appendChild(se);
+                return frag;
+            }
             return el;
         }
         case 'ul':
