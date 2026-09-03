@@ -10,6 +10,7 @@
     --link-color: #000000;
     --link-hover: blue;
     --font-family: 'HMSC', serif, sans-serif;
+    --standard-size: 24px;
 }
 
 @font-face {
@@ -24,6 +25,14 @@
     src: url('../font/RUDAN.otf') format('opentype');
     font-style: normal;
     font-weight: 900;
+    font-display: swap;
+}
+
+@font-face{
+    font-family: 'code';
+    src: url('../font/gsc.ttf') format('truetype');
+    font-style: normal;
+    font-weight: normal;
     font-display: swap;
 }
 
@@ -67,44 +76,44 @@
 @keyframes ULTRA {
     0% {
         opacity: 0;
-        font-size: 53px;
+        font-size: calc(var(--standard-size) * 53 / 24);
     }
 
     50% {
         opacity: 0.5;
-        font-size: 52px;
+        font-size: calc(var(--standard-size) * 52 / 24);
     }
 
     90% {
         opacity: 0.9;
-        font-size: 50.0001px;
+        font-size: calc(var(--standard-size) * 50.0001 / 24);
     }
 
     100% {
         opacity: 1;
-        font-size: 50px;
+        font-size: calc(var(--standard-size) * 50 / 24);
     }
 }
 
 @keyframes PRO {
     0% {
         opacity: 0;
-        font-size: 17px;
+        font-size: calc(var(--standard-size) * 17 / 24);
     }
 
     50% {
         opacity: 0.5;
-        font-size: 18px;
+        font-size: calc(var(--standard-size) * 18 / 24);
     }
 
     90% {
         opacity: 0.9;
-        font-size: 19.9999px;
+        font-size: calc(var(--standard-size) * 19.9999 / 24);
     }
 
     100% {
         opacity: 1;
-        font-size: 20px;
+        font-size: calc(var(--standard-size) * 20 / 24);
     }
 }
 
@@ -192,7 +201,7 @@ body {
     display: block;
     text-align: center;
     font-family: 'HMPro', serif, sans-serif;
-    font-size: 50px;
+    font-size: calc(var(--standard-size) * 50 / 24);
     font-weight: 900;
     color: var(--text-primary);
     padding: 10px 10px;
@@ -203,7 +212,7 @@ body {
     display: inline-block;
     text-align: center;
     font-family: var(--font-family);
-    font-size: 20px;
+    font-size: calc(var(--standard-size) * 20 / 24);
     color: var(--text-secondary);
     padding: 10px 10px;
     animation: PRO 0.5s steps(150) 1;
@@ -252,46 +261,29 @@ body {
 }
 
 .zhengwen h1 {
-    font-size: 28px;
+    font-size: calc(var(--standard-size) * 28 / 24);
     color: var(--text-primary);
-    margin-top: 20px;
-    margin-bottom: 5px;
     text-align: left;
     font-family: var(--font-family);
     font-weight: bold;
 }
 
 .zhengwen h2 {
-    font-size: 26px;
+    font-size: calc(var(--standard-size) * 26 / 24);
     color: var(--text-secondary);
     text-indent: 0.5em;
-    margin-top: 15px;
-    margin-bottom: 5px;
     text-align: left;
     font-family: var(--font-family);
     font-weight: bold;
 }
 
 .zhengwen h3 {
-    font-size: 26px;
+    font-size: calc(var(--standard-size) * 26 / 24);
     font-weight: bold;
     color: var(--text-secondary);
     text-indent: 1.5em;
-    margin-top: 12px;
-    margin-bottom: 8px;
     text-align: left;
     font-family: var(--font-family);
-}
-
-.zhengwen .h3s {
-    font-size: 26px;
-    color: var(--text-secondary);
-    text-indent: 2em;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    text-align: left;
-    font-family: var(--font-family);
-    font-weight: normal;
 }
 
 .zhengwen .se {
@@ -306,7 +298,7 @@ body {
 }
 
 .zhengwen p {
-    font-size: 24px;
+    font-size: var(--standard-size);
     color: var(--text-secondary);
     text-indent: 2em;
     line-height: 1.5;
@@ -317,6 +309,15 @@ body {
 }
 
 .zhengwen ul {
+    font-size: var(--standard-size);
+    margin: 15px 0;
+    padding-left: 25px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.zhengwen ol {
+    font-size: var(--standard-size);
     margin: 15px 0;
     padding-left: 25px;
     box-sizing: border-box;
@@ -324,7 +325,7 @@ body {
 }
 
 .zhengwen li {
-    font-size: 24px;
+    font-size: inherit;
     color: var(--text-secondary);
     text-indent: 0em;
     line-height: 1.25;
@@ -358,4 +359,72 @@ body {
     margin-top: 20px;
     line-height: 12px;
     font-family: Arial, sans-serif;
+}
+
+@media screen and (max-width: 768px) {
+    :root {
+        --standard-size: 20px;
+    }
+    .welc {
+        width: 90%;
+        padding: 80px 0;
+    }
+    .ultra {
+        padding: 8px 8px;
+    }
+    .version {
+        font-size: 16px;
+    }
+    .pro {
+        padding: 8px 8px;
+    }
+    .zhengwen-container {
+        width: 90%;
+    }
+    .zhengwen {
+        padding-top: 20px;
+        padding-bottom: 10px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    .zhengwen .se {
+        font-size: 10px;
+    }
+    .zhengwen p {
+        line-height: 1.2;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    :root {
+        --standard-size: 14px;
+    }
+    .welc {
+        width: 90%;
+        padding: 50px 0;
+    }
+    .ultra {
+        padding: 5px 5px;
+    }
+    .version {
+        font-size: 14px;
+    }
+    .pro {
+        padding: 5px 5px;
+    }
+    .zhengwen-container {
+        width: 90%;
+    }
+    .zhengwen {
+        padding-top: 20px;
+        padding-bottom: 10px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .zhengwen .se {
+        font-size: 8px;
+    }
+    .zhengwen p {
+        line-height: 1.2;
+    }
 }
