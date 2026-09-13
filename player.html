@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f7ff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10131b">
+    <meta name="description" content="Material Design 3 Expressive 风格音乐播放器">
+    <title>Audio Player</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%233e63c6'/%3E%3Cpath d='M9.5 16.2V8.1a1 1 0 0 1 .76-.97l4.2-1.05a1 1 0 0 1 1.24.97v7.45' fill='none' stroke='%23fff' stroke-width='1.7' stroke-linecap='round'/%3E%3Ccircle cx='8.2' cy='16.4' r='1.9' fill='%23fff'/%3E%3Ccircle cx='14.4' cy='14.7' r='1.9' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="Style/player.css">
+    <script src="Script/player.js" defer></script>
+</head>
+<body>
+<main class="stage">
+    <!-- 氛围背景：渐变 + 模糊封面 -->
+    <div class="ambient" aria-hidden="true">
+        <div class="ambient-base"></div>
+        <div class="ambient-img" id="ambientImg"></div>
+    </div>
+
+    <section class="player-card" id="playerCard" aria-label="音乐播放器">
+        <figure class="cover-area">
+            <div class="cover" id="cover">
+                <svg class="cover-fallback" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+                    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".8"/>
+                    <path d="M12 8.6a3.4 3.4 0 1 1-3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".65"/>
+                </svg>
+                <img class="cover-img" id="coverImg" alt="专辑封面" draggable="false">
+            </div>
+        </figure>
+
+        <section class="panel">
+            <header class="meta">
+                <h1 class="title" id="songTitle">Name</h1>
+                <p class="artist" id="songArtist">Artist</p>
+            </header>
+
+            <div class="progress-zone">
+                <div class="slider" id="slider" role="slider" tabindex="0"
+                     aria-label="播放进度" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
+                    <div class="slider-track">
+                        <div class="slider-layer slider-buffered" id="sliderBuffered"></div>
+                        <div class="slider-layer slider-fill" id="sliderFill"></div>
+                        <div class="slider-thumb" id="sliderThumb"></div>
+                    </div>
+                </div>
+                <div class="times">
+                    <span id="timeCurrent">0:00</span>
+                    <span id="timeDuration">--:--</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="skip-btn ripple" id="btnRewind" type="button" aria-label="后退 10 秒">
+                    <svg class="skip-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                        <path d="M360-500h-30q-13 0-21.5-8.5T300-530q0-13 8.5-21.5T330-560h60q13 0 21.5 8.5T420-530v180q0 13-8.5 21.5T390-320q-13 0-21.5-8.5T360-350v-150Zm140 180q-17 0-28.5-11.5T460-360v-160q0-17 11.5-28.5T500-560h80q17 0 28.5 11.5T620-520v160q0 17-11.5 28.5T580-320h-80Zm20-60h40v-120h-40v120ZM339.5-108.5q-65.5-28.5-114-77t-77-114Q120-365 120-440q0-17 11.5-28.5T160-480q17 0 28.5 11.5T200-440q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720h-6l34 34q12 12 11.5 28T508-630q-12 12-28.5 12.5T451-629L348-732q-12-12-12-28t12-28l103-103q12-12 28.5-11.5T508-890q11 12 11.5 28T508-834l-34 34h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80q-75 0-140.5-28.5Z"/>
+                    </svg>
+                </button>
+
+                <button class="fab ripple" id="btnPlay" type="button" aria-label="播放">
+                    <span class="ripple-clip" aria-hidden="true"></span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
+                        <g class="icon-pause">
+                            <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
+                            <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
+                        </g>
+                    </svg>
+                    <span class="fab-ring" aria-hidden="true"></span>
+                </button>
+
+                <button class="skip-btn ripple" id="btnForward" type="button" aria-label="前进 10 秒">
+                    <svg class="skip-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                        <path d="M339.5-108.5q-65.5-28.5-114-77t-77-114Q120-365 120-440t28.5-140.5q28.5-65.5 77-114t114-77Q405-800 480-800h6l-34-34q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T509-891l103 103q12 12 12 28t-12 28L509-629q-12 12-28.5 11.5T452-630q-11-12-11.5-28t11.5-28l34-34h-6q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80q-75 0-140.5-28.5ZM360-500h-30q-13 0-21.5-8.5T300-530q0-13 8.5-21.5T330-560h60q13 0 21.5 8.5T420-530v180q0 13-8.5 21.5T390-320q-13 0-21.5-8.5T360-350v-150Zm140 180q-17 0-28.5-11.5T460-360v-160q0-17 11.5-28.5T500-560h80q17 0 28.5 11.5T620-520v160q0 17-11.5 28.5T580-320h-80Zm20-60h40v-120h-40v120Z"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+    </section>
+
+    <div class="error-layer" id="errorLayer" hidden>
+        <div class="error-card" role="alert">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M12 7.4v5.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+                <circle cx="12" cy="16.2" r="1.15" fill="currentColor"/>
+            </svg>
+            <h2>Audio Loading Failed</h2>
+            <p id="errorMsg">Check your network connection and try again.</p>
+            <button class="retry-btn ripple" id="btnRetry" type="button">Retry</button>
+        </div>
+    </div>
+
+    <!-- 播放地址由 Script/player.js 注入（带时间戳参数穿透缓存，见 TRACK_URL） -->
+    <audio id="audio" preload="metadata"></audio>
+    <noscript><p class="noscript">需要启用 JavaScript 才能使用播放器。</p></noscript>
+</main>
+</body>
+</html>
