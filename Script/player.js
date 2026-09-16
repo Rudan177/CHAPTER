@@ -18,7 +18,7 @@
     // 兜底元数据：仅当 ID3 解析完全失败（如断网、CORS 受限）时才会展示。
     // 提示：换歌后若新文件本身带有完整标签，这里不用改；
     // 只有新文件“没有任何标签”时，才需要把这里改成新歌的信息。
-    const FALLBACK_META = { title: '蝴蝶', artist: '洛天依' };
+    const FALLBACK_META = { title: 'OOOInterface', artist: 'ByRUDAN' };
 
     /* ---------------- DOM ---------------- */
     const $ = (id) => document.getElementById(id);
