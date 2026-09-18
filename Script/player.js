@@ -35,6 +35,7 @@
     const timeCurrent = $('timeCurrent');
     const timeDuration = $('timeDuration');
     const songTitle = $('songTitle');
+    const songTitleText = $('songTitleText');
     const songArtist = $('songArtist');
     const coverEl = $('cover');
     const coverImg = $('coverImg');
@@ -371,14 +372,71 @@
         } catch (_) { /* MediaSession 初始化失败不影响播放 */ }
     }
 
+    /* ---------------- 标题跑马灯（单行放不下时单向循环滚动） ---------------- */
+    const MARQUEE_SPEED = 40;   // 滚动速度（px/s，全程匀速）
+    const MARQUEE_HOLD = 1200;  // 每圈回到起点后的停留（ms）
+    const MARQUEE_MIN = 8;      // 溢出量不超过该值视为放得下（避免微抖）
+    const reduceMotionMql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let marqueeAnim = null;
+    let marqueeRafId = 0;
+
+    function stopTitleMarquee() {
+        if (marqueeAnim) {
+            marqueeAnim.cancel();
+            marqueeAnim = null;
+        }
+        songTitle.classList.remove('is-marquee');
+    }
+
+    function updateTitleMarquee() {
+        stopTitleMarquee();
+        // 静态兜底态下 span 限宽，scrollWidth 仍能量出完整文本宽度
+        const overflow = songTitleText.scrollWidth - songTitle.clientWidth;
+        // 减弱动效：保持静态省略号，不滚动
+        if (overflow <= MARQUEE_MIN || reduceMotionMql.matches || !songTitleText.animate) return;
+
+        songTitle.classList.add('is-marquee');
+        // 单向循环（Android 媒体组件样式）：起点停留 → 匀速滚出左缘 → 瞬间回到右缘外
+        // → 匀速滚回起点，无限循环。跳变发生在窗口内无文字的时刻，
+        // 配合两端渐隐遮罩，视觉上是无缝的传送带。
+        const textW = songTitleText.scrollWidth;   // 加类解除限宽后即完整文本宽度
+        const boxW = songTitle.clientWidth;
+        const total = MARQUEE_HOLD + (textW + boxW) / MARQUEE_SPEED * 1000;
+        const o1 = MARQUEE_HOLD / total;
+        const o2 = (MARQUEE_HOLD + textW / MARQUEE_SPEED * 1000) / total;
+        marqueeAnim = songTitleText.animate([
+            { transform: 'translateX(0)' },
+            { transform: 'translateX(0)', offset: o1 },
+            { transform: `translateX(${-textW}px)`, offset: o2 },
+            { transform: `translateX(${boxW}px)`, offset: o2 },   // 同偏移两帧 = 瞬间跳变
+            { transform: 'translateX(0)' },
+        ], { duration: total, iterations: Infinity });
+    }
+
+    function scheduleTitleMarquee() {
+        if (marqueeRafId) return;
+        marqueeRafId = requestAnimationFrame(() => {
+            marqueeRafId = 0;
+            updateTitleMarquee();
+        });
+    }
+
+    // 容器尺寸 / 文本宽度 / 字体加载变化时重新测量
+    new ResizeObserver(scheduleTitleMarquee).observe(songTitle);
+    new ResizeObserver(scheduleTitleMarquee).observe(songTitleText);
+    reduceMotionMql.addEventListener('change', scheduleTitleMarquee);
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(scheduleTitleMarquee);
+    }
+
     /* ---------------- 文本/封面更新 ---------------- */
     let currentMeta = { ...FALLBACK_META };
 
-    function swapText(el, text) {
+    function swapText(el, text, animEl = el) {
         if (el.textContent === text) return;
         el.textContent = text;
-        if (el.animate) {
-            el.animate(
+        if (animEl.animate) {
+            animEl.animate(
                 [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
                 { duration: 420, easing: 'cubic-bezier(.05,.7,.1,1)' }
             );
@@ -387,8 +445,10 @@
 
     function applyMeta(meta) {
         currentMeta = meta;
-        swapText(songTitle, meta.title);
+        // 标题：文字写入内层 span（跑马灯载体），切换动画作用于外层 h1，避免 transform 冲突
+        swapText(songTitleText, meta.title, songTitle);
         swapText(songArtist, meta.artist);
+        updateTitleMarquee();
         document.title = `${meta.title} · ${meta.artist} — 音乐播放器`;
         coverImg.alt = `专辑封面：${meta.title}`;
     }

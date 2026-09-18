@@ -260,7 +260,35 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     line-height: 1.16;
     font-weight: 700;
     letter-spacing: .01em;
-    overflow-wrap: anywhere;
+    white-space: nowrap;   /* 始终单行，不折行撑乱布局 */
+    overflow: hidden;
+}
+
+/* 标题文字：静态放不下时先以省略号优雅截断（含减弱动效兜底）；
+   JS 检测到溢出后加 .is-marquee 切换为单行往返滚动 */
+.title-text {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+}
+
+.title.is-marquee {
+    /* 滚动统一以行首为基准；两端渐隐遮罩，符合 M3 媒体组件的溢出文本处理 */
+    text-align: left;
+    --marquee-fade: 16px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--marquee-fade),
+        #000 calc(100% - var(--marquee-fade)), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 var(--marquee-fade),
+        #000 calc(100% - var(--marquee-fade)), transparent);
+}
+
+.title.is-marquee .title-text {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    will-change: transform;
 }
 
 .artist {
@@ -268,6 +296,9 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     font-size: clamp(15px, 1.6vw, 17px);
     font-weight: 500;
     color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* 文本切换动画（JS 通过 WAAPI 触发时无需此类，这里仅兜底） */
