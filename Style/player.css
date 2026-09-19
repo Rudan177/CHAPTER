@@ -1,18 +1,18 @@
 :root {
     color-scheme: light dark;
 
-    /* 颜色（蓝色基线；JS 取色后动态覆盖） */
+    /* 颜色（蓝色基线；JS 取色后动态覆盖）。
+       只保留实际被 var() 消费的角色：早前的 --primary-container /
+       --on-primary-container / --outline-variant 无人使用却每次换曲都被
+       JS 重写一遍，属于纯无效写入，已移除 */
     --primary: #3e63c6;
     --on-primary: #ffffff;
-    --primary-container: #d9e2ff;
-    --on-primary-container: #0f1d4d;
     --surface: #f5f7ff;
     --surface-container: #edf0fa;
     --surface-container-high: #e6e9f5;
     --surface-container-highest: #e0e3f0;
     --on-surface: #181c27;
     --on-surface-variant: #454b5e;
-    --outline-variant: #c5cbdd;
     --error: #b3261e;
 
     /* 间距令牌（M3 spacing scale） */
@@ -24,7 +24,6 @@
     --space-700: 28px;
     --space-800: 32px;
     --space-1000: 40px;
-    --space-1200: 48px;
 
     /* 形状令牌（M3 shape scale） */
     --shape-lg: 16px;
@@ -33,6 +32,8 @@
     --shape-full: 999px;
 
     /* 窗口边距（M3 layout：compact 16 / medium 24） */
+    /* 窗口边距：桌面走 .stage 的 clamp() 自适应（见下），
+       这个令牌是 compact 断点（≤760px）的取值来源 —— 改窄屏边距改这里 */
     --window-margin: var(--space-600);
 
     /* 同心圆角：卡片圆角 = 封面圆角 + 卡片内边距（两条弧线平行等距）
@@ -41,6 +42,32 @@
     --cover-size: 280px;                  /* 桌面封面边长（双列左栏） */
     --radius-cover: var(--shape-lg);      /* 16 */
     --radius-card: calc(var(--radius-cover) + var(--card-pad));   /* 48 */
+
+    /* 收起形态（长胶囊）的高度；48 圆角在 76 高的盒子上会被裁成 38 = 完整胶囊 */
+    --mini-h: 76px;
+
+    /* 播放列表卡片的两档圆角。
+       它没有封面，--radius-card（封面圆角 + 卡片内边距）在这里没有依据：
+       展开态的半径按「曲目行圆角 + 列表左内边距」推导，
+       让行与外框两条弧在左侧平行等距（注意不是 --radius-cover：
+       移动端封面圆角会变大，而曲目行圆角恒为 --shape-lg）。
+       右侧在经典滚动条平台会多出一个滚动条宽度，弧距略有差异；
+       收起态只剩头部胶囊，取其高度的一半，
+       浏览器再按盒子高度等比压缩也不会变形 */
+    --playlist-head-h: 64px;
+    --radius-playlist-row: var(--shape-lg);
+    --radius-playlist-open: calc(var(--radius-playlist-row) + var(--space-300));
+
+    /* 形态收放（完整 ⇄ 长胶囊、列表收展、封面飞行）共用同一时长与曲线，
+       速率才不会各走各的 */
+    --morph-duration: .62s;
+
+    /* 可折叠区域的自然高度，由 JS 量得后写到各自的卡片上。
+       行高用「长度」插值而不是 fr：fr 的插值曲线与同一缓动下的封面飞行并不同步
+       （实测中段偏差可达 25%，观感是封面比卡片慢半拍）。
+       测量完成前用 auto 兜底，保证内容不被裁切 */
+    --full-h: auto;
+    --list-h: auto;
 
     --shadow-key: 0 18px 50px -12px rgba(30, 42, 90, .35);
     --shadow-fab: 0 10px 28px -8px rgba(30, 42, 90, .45);
@@ -54,15 +81,12 @@
     :root {
         --primary: #aac7ff;
         --on-primary: #0b2f6a;
-        --primary-container: #29478f;
-        --on-primary-container: #d8e2ff;
         --surface: #10131b;
         --surface-container: #1c202b;
         --surface-container-high: #262b37;
         --surface-container-highest: #313745;
         --on-surface: #e2e4ec;
         --on-surface-variant: #c3c8d8;
-        --outline-variant: #454b5e;
         --error: #f2b8b5;
 
         --shadow-key: 0 18px 50px -12px rgba(0, 0, 0, .6);
@@ -117,9 +141,14 @@ button {
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     padding: clamp(var(--space-400), 4vw, var(--shape-xxl));
+    /* 桌面/平板横屏也要避开刘海与 Home 指示条（viewport-fit=cover 时） */
+    padding-top: max(clamp(var(--space-400), 4vw, var(--shape-xxl)), env(safe-area-inset-top));
+    padding-bottom: max(clamp(var(--space-400), 4vw, var(--shape-xxl)), env(safe-area-inset-bottom));
+    padding-left: max(clamp(var(--space-400), 4vw, var(--shape-xxl)), env(safe-area-inset-left));
+    padding-right: max(clamp(var(--space-400), 4vw, var(--shape-xxl)), env(safe-area-inset-right));
     isolation: isolate;
 }
 
@@ -162,18 +191,25 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .7; }
 }
 
+/* ---------- 播放器栈 ----------
+   播放器卡片与播放列表同宽堆叠；垂直居中交给 margin:auto，
+   内容高于视口时自动退化为顶对齐、随页面滚动 */
+.player-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-400);
+    width: min(720px, 100%);
+    margin: auto 0;
+}
+
 /* ---------- 播放器卡片 ----------
-   桌面：横向双列（封面在左、信息在右）
-   行高锁定为封面尺寸，封面撑满行高并保持正方形，
-   使封面的上 / 下 / 左边距都等于卡片内边距 */
+   卡片本身是「完整形态 / 长胶囊」两行的网格：
+   收放完整形态靠第一行的长度插值（0px ⇄ --full-h），
+   胶囊自身高度 0 ⇄ --mini-h 同步过渡，两者相加就是卡片总高 */
 .player-card {
     position: relative;
-    width: min(720px, 100%);
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: minmax(var(--cover-size), auto);
-    gap: var(--space-1000);
-    padding: var(--card-pad);
+    grid-template-rows: minmax(0px, var(--full-h)) auto;
     border-radius: var(--radius-card);
     background: var(--surface-container);
     background: color-mix(in oklab, var(--surface-container) 78%, transparent);
@@ -181,11 +217,167 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     -webkit-backdrop-filter: blur(28px) saturate(1.25);
     box-shadow: var(--shadow-key);
     animation: card-in .9s var(--ease-decel) both;
+    transition: grid-template-rows var(--morph-duration) var(--ease-emphasized);
 }
 
-@keyframes card-in {
-    from { opacity: 0; transform: translateY(28px) scale(.985); }
-    to   { opacity: 1; transform: none; }
+body.list-open .player-card { grid-template-rows: minmax(0px, 0px) auto; }
+
+/* 完整形态：自身不带内边距，否则内边距会把最小高度撑住、收不成零高 */
+.player-full {
+    min-height: 0;
+    overflow: hidden;
+    transition: opacity .3s var(--ease-emphasized);
+}
+
+body.list-open .player-full { opacity: 0; }
+
+/* 桌面：横向双列（封面在左、信息在右）
+   行高锁定为封面尺寸，封面撑满行高并保持正方形，
+   使封面的上 / 下 / 左边距都等于卡片内边距 */
+.full-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(var(--cover-size), auto);
+    gap: var(--space-1000);
+    padding: var(--card-pad);
+}
+
+/* ---------- 收起形态：长胶囊 ----------
+   .mini-inner 绝对定位、定高，收放过程中内容不参与压缩形变 */
+.player-mini {
+    position: relative;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+    transition: height var(--morph-duration) var(--ease-emphasized);
+}
+
+body.list-open .player-mini { height: var(--mini-h); }
+
+.mini-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--mini-h);
+    display: flex;
+    align-items: center;
+    gap: var(--space-400);
+    padding: 0 var(--space-400) 0 var(--space-300);
+    opacity: 0;
+    transition: opacity .3s var(--ease-emphasized);
+}
+
+body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
+
+/* 点封面 / 曲名区域 = 收起列表，回到完整播放器。
+   这里不裁剪：.mini-open 的圆角比胶囊封面大，若开 overflow:hidden
+   会把封面左上 / 左下角削成更大的弧度，看起来左右圆角不一致。
+   涟漪改由内部的 .ripple-clip 覆盖层承担裁剪 */
+.mini-open {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-400);
+    padding: 0;
+    border-radius: var(--shape-lg);
+    text-align: left;
+    color: inherit;
+}
+
+.mini-open:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+
+/* 涟漪裁剪层：按钮自身不再裁剪（否则会削掉胶囊封面的左圆角），
+   改由这层负责。抬到内容之上，涟漪仍像以前一样浮在封面与文字上 */
+.mini-open .ripple-clip { z-index: 1; }
+
+.mini-cover {
+    position: relative;
+    /* 建立自己的层叠上下文：否则 .mini-cover-img 的 z-index:2 会和
+       .mini-open .ripple-clip 的 z-index:1 在同一层里比较，涟漪被封面盖住。
+       收进 z-index:0 之后，整个封面被压到涟漪之下 */
+    z-index: 0;
+    flex: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    background-image:
+        radial-gradient(120% 120% at 20% 12%,
+            color-mix(in oklab, var(--primary) 26%, var(--surface-container-high)),
+            var(--surface-container-highest));
+    box-shadow: 0 6px 16px -8px rgba(30, 42, 90, .5);
+}
+
+/* 与主封面同一套双层交叉淡入 + 推近缩放 */
+.mini-cover-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.18);
+    transform-origin: center;
+    transition: opacity .6s var(--ease-decel), transform .6s var(--ease-decel);
+    backface-visibility: hidden;
+}
+
+.mini-cover-img.is-front { opacity: 1; transform: none; z-index: 2; }
+
+.mini-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mini-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-artist {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-btn {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--on-surface);
+    overflow: hidden;
+    transition: background-color .22s var(--ease-emphasized),
+                transform .3s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.mini-btn:hover { background: var(--surface-container-high); }
+.mini-btn:active { transform: scale(.9); }
+
+.mini-btn:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
+}
+
+.mini-btn > svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
 }
 
 /* ---------- 封面 ---------- */
@@ -195,6 +387,16 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     align-items: stretch;
     justify-content: flex-start;
     animation: rise .8s var(--ease-decel) .05s both;
+}
+
+/* 无 aspect-ratio 的浏览器（Safari ≤14 等）：移动端封面宽度撑满、
+   高度完全依赖 aspect-ratio，缺了会塌成 0 高，用 padding 撑出正方形 */
+@supports not (aspect-ratio: 1) {
+    .cover::before {
+        content: '';
+        display: block;
+        padding-top: 100%;   /* 高度 = 宽度，替代 aspect-ratio */
+    }
 }
 
 .cover {
@@ -225,6 +427,9 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     transition: opacity .5s var(--ease-decel);
 }
 
+.cover.has-img .cover-fallback { opacity: 0; }
+
+/* 双层封面：交叉淡入 + 推近缩放（.is-front 为当前显示层） */
 .cover-img {
     position: absolute;
     inset: 0;
@@ -237,8 +442,7 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     user-select: none;
 }
 
-.cover.has-img .cover-img { opacity: 1; transform: none; }
-.cover.has-img .cover-fallback { opacity: 0; }
+.cover-img.is-front { opacity: 1; transform: none; z-index: 2; }
 
 /* ---------- 信息与控制面板 ---------- */
 .panel {
@@ -250,12 +454,20 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 }
 
 .meta {
+    /* 必须锁宽：移动端 .panel 是 align-items:center，本元素会被当成
+       shrink-to-fit，横向撑成 max-content（实测 986px，远超 288px 的面板）。
+       它一溢出，里面的标题也就量不到「可用宽度」，滚动永远不会触发 */
+    width: 100%;
     min-width: 0;
     animation: rise .8s var(--ease-decel) .14s both;
 }
 
 .title {
     margin: 0;
+    /* 撑满 .meta 宽度（.meta 已被锁成 100%，见上方说明）：
+       标题盒必须小于整段文字，JS 量到的溢出量才非零，
+       .title-text 的 max-width 也才有落点 */
+    width: 100%;
     font-size: clamp(26px, 3.4vw, 34px);
     line-height: 1.16;
     font-weight: 700;
@@ -265,7 +477,7 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 }
 
 /* 标题文字：静态放不下时先以省略号优雅截断（含减弱动效兜底）；
-   JS 检测到溢出后加 .is-marquee 切换为单行往返滚动 */
+   JS 检测到溢出后加 .is-marquee 切换为单行循环滚动 */
 .title-text {
     display: inline-block;
     max-width: 100%;
@@ -299,14 +511,6 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-/* 文本切换动画（JS 通过 WAAPI 触发时无需此类，这里仅兜底） */
-.meta.swap { animation: meta-swap .45s var(--ease-decel); }
-
-@keyframes meta-swap {
-    0%   { opacity: .2; transform: translateY(7px); }
-    100% { opacity: 1; transform: none; }
 }
 
 /* ---------- 进度条（M3 滑条，触控目标 48dp） ---------- */
@@ -371,8 +575,12 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 .slider.is-dragging .slider-thumb,
 .slider:focus-visible .slider-thumb { width: 28px; }
 
+/* 焦点环统一用实心 --primary：对比约 4.5:1（达标）。
+   早前用 color-mix(..., 55~60%, transparent) 只有约 2.2:1，不满足
+   非文本 3:1；而且 .slider 已删掉默认 outline，一旦浏览器不支持
+   color-mix 就会连替代的焦点环一起丢掉，键盘用户完全失去焦点指示 */
 .slider:focus-visible .slider-track {
-    outline: 3px solid color-mix(in oklab, var(--primary) 55%, transparent);
+    outline: 3px solid var(--primary);
     outline-offset: 3px;
 }
 
@@ -403,6 +611,11 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     to   { opacity: 1; transform: none; }
 }
 
+@keyframes card-in {
+    from { opacity: 0; transform: translateY(28px) scale(.985); }
+    to   { opacity: 1; transform: none; }
+}
+
 .ripple { position: relative; }
 
 .fab.ripple { overflow: visible; }
@@ -430,7 +643,7 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     to { transform: scale(1); opacity: 0; }
 }
 
-/* 快进 / 快退 */
+/* 上一曲 / 下一曲 */
 .skip-btn {
     flex: none;
     width: 56px;
@@ -453,7 +666,6 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     outline-offset: 3px;
 }
 
-/* Material Symbols（rounded）replay_10 / forward_10，填充式 */
 .skip-icon {
     width: 26px;
     height: 26px;
@@ -465,6 +677,7 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     flex: none;
     position: relative;
     width: clamp(72px, 15vw, 84px);
+    height: clamp(72px, 15vw, 84px);   /* 无 aspect-ratio 的浏览器兜底，否则高为 0 */
     aspect-ratio: 1;
     border-radius: 50%;
     display: grid;
@@ -485,7 +698,7 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 .fab:active { transform: scale(.92); }
 
 .fab:focus-visible {
-    outline: 3px solid color-mix(in oklab, var(--primary) 60%, transparent);
+    outline: 3px solid var(--primary);
     outline-offset: 4px;
 }
 
@@ -495,19 +708,19 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     fill: currentColor;
 }
 
-/* 播放 ⇄ 暂停 图标形变（交叉淡入 + 旋转缩放，弹簧曲线） */
-.fab .icon-play,
-.fab .icon-pause {
+/* 播放 ⇄ 暂停 图标形变（完整 FAB 与迷你胶囊共用一套） */
+.icon-play,
+.icon-pause {
     transform-box: fill-box;
     transform-origin: center;
     transition: opacity .22s var(--ease-emphasized),
                 transform .45s var(--ease-spring, var(--ease-spring-fallback));
 }
 
-.fab .icon-pause { opacity: 0; transform: rotate(90deg) scale(.4); }
+.icon-pause { opacity: 0; transform: rotate(90deg) scale(.4); }
 
-.fab.is-playing .icon-play { opacity: 0; transform: rotate(-90deg) scale(.4); }
-.fab.is-playing .icon-pause { opacity: 1; transform: none; }
+.is-playing .icon-play { opacity: 0; transform: rotate(-90deg) scale(.4); }
+.is-playing .icon-pause { opacity: 1; transform: none; }
 
 /* 缓冲指示环 */
 .fab-ring {
@@ -530,6 +743,299 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 
 @keyframes ring-spin { to { transform: rotate(360deg); } }
 
+/* ---------- 封面飞行层 ----------
+   卡片收放时封面作为「共享元素」从完整形态飞进胶囊封面（或反向）：
+   绝对定位在 .player-card 内（卡片即定位上下文），
+   坐标全部是卡片坐标系，随卡片一起移动。
+   位置 / 尺寸 / 圆角交给 CSS 过渡，与卡片行高共用 --morph-duration 与同一缓动，
+   因此速率天然一致，中途反向也由浏览器按同一套规则接续 */
+.cover-fly {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 8;
+    pointer-events: none;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    box-shadow: var(--shadow-key);
+    transition: left var(--morph-duration) var(--ease-emphasized),
+                top var(--morph-duration) var(--ease-emphasized),
+                width var(--morph-duration) var(--ease-emphasized),
+                height var(--morph-duration) var(--ease-emphasized),
+                border-radius var(--morph-duration) var(--ease-emphasized);
+    will-change: left, top, width, height;
+}
+
+/* 起飞前先把起始几何落到起点，这一步不插值 */
+.cover-fly:not(.is-flying) { transition: none; }
+
+/* 飞行期间隐藏原位置的两处封面，避免重影 */
+body.cover-flying .cover,
+body.cover-flying .mini-cover { opacity: 0; }
+
+/* ---------- 播放列表 ----------
+   收起时只剩头部胶囊（圆角取头高一半，压成完整胶囊），
+   展开时第二行同样用长度插值（0px ⇄ --list-h），与播放器卡片同一速率。
+   与播放器卡片正好相反：播放器收起成胶囊时，列表才展开 */
+.playlist-card {
+    display: grid;
+    grid-template-rows: auto minmax(0px, 0px);
+    border-radius: calc(var(--playlist-head-h) / 2);
+    background: var(--surface-container);
+    background: color-mix(in oklab, var(--surface-container) 78%, transparent);
+    backdrop-filter: blur(28px) saturate(1.25);
+    -webkit-backdrop-filter: blur(28px) saturate(1.25);
+    box-shadow: var(--shadow-key);
+    overflow: hidden;
+    animation: card-in .9s var(--ease-decel) .12s both;
+    transition: grid-template-rows var(--morph-duration) var(--ease-emphasized),
+                border-radius var(--morph-duration) var(--ease-emphasized);
+}
+
+/* 重测 --full-h / --list-h 时的临时态：尺寸更新不该被当成形态动画 */
+.player-card.no-ease,
+.playlist-card.no-ease { transition: none; }
+
+body.list-open .playlist-card {
+    grid-template-rows: auto minmax(0px, var(--list-h));
+    border-radius: var(--radius-playlist-open);
+}
+
+.playlist-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-300);
+    width: 100%;
+    min-height: var(--playlist-head-h);   /* 与收起态胶囊半径同源，改一处即可 */
+    padding: 0 var(--space-500);
+    font-size: 15.5px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    text-align: left;
+    transition: background-color .25s var(--ease-emphasized);
+}
+
+.playlist-head:hover { background: color-mix(in oklab, var(--on-surface) 6%, transparent); }
+
+.playlist-head:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
+}
+
+.playlist-glyph {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    fill: var(--primary);
+}
+
+/* 允许收缩 + 省略：长文案（或本地化更长的标题）不会把计数与箭头顶出容器 */
+.playlist-head-title {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.playlist-count {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+}
+
+.playlist-chevron {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    fill: var(--on-surface-variant);
+    transition: transform var(--morph-duration) var(--ease-emphasized);
+}
+
+body.list-open .playlist-chevron { transform: rotate(180deg); }
+
+/* 列表体：自身不带内边距（padding 会撑住最小高度、收不成零高） */
+.playlist-body {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.playlist-list {
+    list-style: none;
+    margin: 0;
+    /* 左右同值内边距。经典滚动条会额外占掉一条宽度（叠加式滚动条则为 0），
+       所以「行右缘距卡片边」在 Windows/Linux 上比左侧多一个滚动条宽度——
+       这是既有行为，暂不在样式层强行拉平：曾试过把右内边距置 0 抵消滚动条，
+       但那只在左内边距恰好等于滚动条宽度（12px）时成立，
+       窄屏左内边距变 8px 后反而更不对称，故回退 */
+    padding: 6px var(--space-300) var(--space-300);
+    max-height: min(430px, 52vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+/* Chrome / Safari 滚动条（标准属性会让 webkit 前缀失效，故按浏览器分流） */
+.playlist-list::-webkit-scrollbar { width: 12px; }
+.playlist-list::-webkit-scrollbar-track { background: transparent; }
+.playlist-list::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--on-surface) 22%, transparent);
+    border-radius: var(--shape-full);
+    border: 4px solid transparent;
+    background-clip: padding-box;
+}
+.playlist-list::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--on-surface) 34%, transparent);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .playlist-list {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in oklab, var(--on-surface) 22%, transparent) transparent;
+    }
+}
+
+/* 曲目行：等化器占位 | 日期 | 曲名/歌手 | 类型 | 时长 */
+.track-row {
+    display: grid;
+    grid-template-columns: 14px 44px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-300);
+    width: 100%;
+    padding: 9px var(--space-300);
+    border-radius: var(--radius-playlist-row);   /* 与列表卡片展开半径同源，保证同心 */
+    overflow: hidden;
+    text-align: left;
+    transition: background-color .22s var(--ease-emphasized);
+}
+
+/* 回退值用 --surface-container-high（与 13~7% 的叠色观感接近），
+   保证不支持 color-mix 时当前曲目依然有可见的底色 */
+.track-row:hover { background: var(--surface-container-high); }
+.track-row:hover { background: color-mix(in oklab, var(--on-surface) 7%, transparent); }
+
+.track-row.is-current {
+    background: var(--surface-container-high);
+    background: color-mix(in oklab, var(--primary) 13%, transparent);
+}
+
+.track-row:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
+}
+
+/* 当前曲目指示：播放时三根条弹跳，暂停时保持错落的静态高度 */
+.track-eq {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    width: 14px;
+    height: 14px;
+}
+
+.track-eq i {
+    width: 3px;
+    height: 45%;
+    border-radius: 2px;
+    background: var(--primary);
+    transform-origin: bottom;
+}
+
+.track-eq i:nth-child(2) { height: 100%; }
+.track-eq i:nth-child(3) { height: 65%; }
+
+.track-row:not(.is-current) .track-eq { visibility: hidden; }
+
+.track-row.is-current.is-playing .track-eq i {
+    animation: eq-bar .8s var(--ease-emphasized) infinite alternate;
+}
+
+.track-row.is-current.is-playing .track-eq i:nth-child(2) { animation-duration: .62s; }
+.track-row.is-current.is-playing .track-eq i:nth-child(3) { animation-duration: .98s; }
+
+@keyframes eq-bar {
+    from { transform: scaleY(.4); }
+    to   { transform: scaleY(1); }
+}
+
+.track-date {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    /* 固定列宽 44px：非 8 位日期会原样输出长串，这里兜住不挤压曲名列 */
+    max-width: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.track-name {
+    font-size: 14.5px;
+    font-weight: 650;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-artist {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-type {
+    flex: none;
+    padding: 3px 9px;
+    border-radius: var(--shape-full);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    color: var(--on-surface-variant);
+    background: color-mix(in oklab, var(--on-surface) 8%, transparent);
+}
+
+/* 清单类型为空时留一个零尺寸占位：不显示空药丸，也不改动网格列宽
+   （若用 display:none，时长会挪到前一列、与其它行不再右对齐） */
+.track-type:empty { padding: 0; background: none; }
+
+.track-type.is-official {
+    /* 11px 小字：直接用 --primary 只有约 4.0:1（浅色主题），
+       混入 --on-surface 压深后约 5.1:1，深色主题约 7.4:1，两套主题都达标 */
+    color: color-mix(in oklab, var(--primary) 80%, var(--on-surface));
+    background: color-mix(in oklab, var(--primary) 14%, transparent);
+}
+
+.track-duration {
+    min-width: 40px;
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+}
+
+.playlist-empty {
+    padding: var(--space-500) var(--space-300);
+    font-size: 13.5px;
+    color: var(--on-surface-variant);
+    text-align: center;
+}
+
 /* ---------- 错误层 ---------- */
 .error-layer {
     position: fixed;
@@ -538,7 +1044,8 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     display: grid;
     place-items: center;
     padding: var(--space-600);
-    background: color-mix(in oklab, var(--surface) 55%, transparent);
+    background: var(--surface);                                        /* 无 color-mix 时的回退 */
+    background: color-mix(in oklab, var(--surface) 55%, transparent);  /* 与卡片同款渐进增强 */
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     animation: fade-in .35s var(--ease-decel) both;
@@ -598,12 +1105,12 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 .retry-btn:active { transform: scale(.93); }
 
 .retry-btn:focus-visible {
-    outline: 3px solid color-mix(in oklab, var(--primary) 60%, transparent);
+    outline: 3px solid var(--primary);
     outline-offset: 3px;
 }
 
 /* ============================================================
-   移动端适配（compact 窗口）：改为单列（封面在上、信息在下）
+   移动端适配（compact 窗口）：完整形态改单列（封面在上、信息在下）
    窗口边距 28、卡片内边距 28、同心圆角 20 + 28 = 48
    ============================================================ */
 @media (max-width: 760px) {
@@ -611,6 +1118,9 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
         --window-margin: var(--space-700);   /* 28：窗口边距 */
         --card-pad: var(--space-700);        /* 28：卡片内边距 */
         --radius-cover: 20px;
+        --mini-h: 68px;
+        --playlist-head-h: 56px;                                             /* 头部收窄，收起态胶囊半径随之 */
+        --radius-playlist-open: calc(var(--radius-playlist-row) + var(--space-200));  /* 16 + 8，与移动端列表内边距同心 */
     }
 
     .stage {
@@ -619,16 +1129,16 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
         padding-bottom: max(var(--window-margin), env(safe-area-inset-bottom));
     }
 
-    /* 单列：卡片按内容高度、整体居中 */
-    .player-card {
+    .player-stack {
+        gap: var(--space-300);
+        max-width: 400px;
+    }
+
+    /* 单列：封面在上、信息在下 */
+    .full-inner {
         display: flex;
         flex-direction: column;
-        grid-template-columns: none;
-        grid-template-rows: none;
         gap: var(--space-400);        /* 16：封面 → 信息 */
-        width: 100%;
-        max-width: 400px;
-        margin: auto;
     }
 
     /* 封面填满内容区：左右留白 = 卡片内边距 */
@@ -648,13 +1158,22 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
     }
 
     /* 移动端收紧滑条触控留白与时间行上边距 */
-    .slider { min-height: 40px; }
-    .times { margin-top: 2px; }
-
-    .controls { gap: var(--space-600); }
-    .skip-btn { width: 60px; height: 60px; }
-    .skip-icon { width: 28px; height: 28px; }
+    .slider { min-height: 44px; }   /* 触控目标 ≥44px（原先 40 偏小） */
+    .times { margin-top: 2px; }   /* 2px 视觉微调，M3 间距刻度无此档，故不套令牌 */
     .slider-track { height: 14px; }
+
+    /* 收起形态：窄屏进一步收紧（.controls gap / .skip-btn 与桌面同值，不再重复声明） */
+    .mini-inner { gap: var(--space-300); padding: 0 var(--space-300) 0 var(--space-200); }
+    .mini-open { gap: var(--space-300); }
+    .mini-cover { width: 44px; height: 44px; border-radius: 11px; }
+    .mini-btn { width: 38px; height: 38px; }
+    .mini-btn > svg { width: 20px; height: 20px; }
+    .mini-title { font-size: 14px; }
+
+    /* 播放列表：头部收窄、列表限高 */
+    .playlist-head { padding: 0 var(--space-400); }
+    .playlist-list { max-height: 46vh; padding: 4px var(--space-200) var(--space-200); }
+    .track-row { gap: var(--space-200); padding: 8px var(--space-200); }
 }
 
 /* 竖屏矮视口：收紧一档（同心 24 + 24 = 48） */
@@ -670,7 +1189,10 @@ body:has(.player-card.is-playing-root) .ambient-img.is-visible { opacity: .62; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: .01ms !important;
+        animation-delay: 0s !important;          /* 配合 fill-mode:both，别先空一帧 */
         animation-iteration-count: 1 !important;
         transition-duration: .01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
     }
 }

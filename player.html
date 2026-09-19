@@ -19,66 +19,128 @@
         <div class="ambient-img" id="ambientImg"></div>
     </div>
 
-    <section class="player-card" id="playerCard" aria-label="音乐播放器">
-        <figure class="cover-area">
-            <div class="cover" id="cover">
-                <svg class="cover-fallback" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
-                    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".8"/>
-                    <path d="M12 8.6a3.4 3.4 0 1 1-3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".65"/>
-                </svg>
-                <img class="cover-img" id="coverImg" alt="专辑封面" draggable="false">
-            </div>
-        </figure>
+    <!-- 播放器栈：播放器卡片与播放列表同宽堆叠 -->
+    <div class="player-stack">
 
-        <section class="panel">
-            <header class="meta">
-                <h1 class="title" id="songTitle"><span class="title-text" id="songTitleText">Name</span></h1>
-                <p class="artist" id="songArtist">Artist</p>
-            </header>
+        <!-- 播放器卡片：网格两行 = 完整形态（.player-full）⇄ 长胶囊（.player-mini） -->
+        <section class="player-card" id="playerCard" aria-label="音乐播放器">
 
-            <div class="progress-zone">
-                <div class="slider" id="slider" role="slider" tabindex="0"
-                     aria-label="播放进度" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
-                    <div class="slider-track">
-                        <div class="slider-layer slider-buffered" id="sliderBuffered"></div>
-                        <div class="slider-layer slider-fill" id="sliderFill"></div>
-                        <div class="slider-thumb" id="sliderThumb"></div>
-                    </div>
+            <!-- 完整形态 -->
+            <div class="player-full" id="playerFull">
+                <div class="full-inner">
+                    <figure class="cover-area">
+                        <div class="cover" id="cover">
+                            <svg class="cover-fallback" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".5"/>
+                                <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".8"/>
+                                <path d="M12 8.6a3.4 3.4 0 1 1-3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".65"/>
+                            </svg>
+                            <img class="cover-img" id="coverImg" alt="专辑封面" draggable="false">
+                            <img class="cover-img" id="coverImgAlt" alt="" draggable="false">
+                        </div>
+                    </figure>
+
+                    <section class="panel">
+                        <header class="meta">
+                            <h1 class="title" id="songTitle"><span class="title-text" id="songTitleText">Name</span></h1>
+                            <p class="artist" id="songArtist">Artist</p>
+                        </header>
+
+                        <div class="progress-zone">
+                            <div class="slider" id="slider" role="slider" tabindex="0"
+                                 aria-label="播放进度" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
+                                <div class="slider-track">
+                                    <div class="slider-layer slider-buffered" id="sliderBuffered"></div>
+                                    <div class="slider-layer slider-fill" id="sliderFill"></div>
+                                    <div class="slider-thumb" id="sliderThumb"></div>
+                                </div>
+                            </div>
+                            <div class="times">
+                                <span id="timeCurrent">0:00</span>
+                                <span id="timeDuration">--:--</span>
+                            </div>
+                        </div>
+
+                        <div class="controls">
+                            <button class="skip-btn ripple" id="btnPrev" type="button" aria-label="上一曲">
+                                <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                                </svg>
+                            </button>
+
+                            <button class="fab ripple" id="btnPlay" type="button" aria-label="播放">
+                                <span class="ripple-clip" aria-hidden="true"></span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
+                                    <g class="icon-pause">
+                                        <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
+                                        <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
+                                    </g>
+                                </svg>
+                                <span class="fab-ring" aria-hidden="true"></span>
+                            </button>
+
+                            <button class="skip-btn ripple" id="btnNext" type="button" aria-label="下一曲">
+                                <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </section>
                 </div>
-                <div class="times">
-                    <span id="timeCurrent">0:00</span>
-                    <span id="timeDuration">--:--</span>
-                </div>
             </div>
 
-            <div class="controls">
-                <button class="skip-btn ripple" id="btnRewind" type="button" aria-label="后退 10 秒">
-                    <svg class="skip-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                        <path d="M360-500h-30q-13 0-21.5-8.5T300-530q0-13 8.5-21.5T330-560h60q13 0 21.5 8.5T420-530v180q0 13-8.5 21.5T390-320q-13 0-21.5-8.5T360-350v-150Zm140 180q-17 0-28.5-11.5T460-360v-160q0-17 11.5-28.5T500-560h80q17 0 28.5 11.5T620-520v160q0 17-11.5 28.5T580-320h-80Zm20-60h40v-120h-40v120ZM339.5-108.5q-65.5-28.5-114-77t-77-114Q120-365 120-440q0-17 11.5-28.5T160-480q17 0 28.5 11.5T200-440q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720h-6l34 34q12 12 11.5 28T508-630q-12 12-28.5 12.5T451-629L348-732q-12-12-12-28t12-28l103-103q12-12 28.5-11.5T508-890q11 12 11.5 28T508-834l-34 34h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80q-75 0-140.5-28.5Z"/>
-                    </svg>
-                </button>
-
-                <button class="fab ripple" id="btnPlay" type="button" aria-label="播放">
-                    <span class="ripple-clip" aria-hidden="true"></span>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
-                        <g class="icon-pause">
-                            <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
-                            <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
-                        </g>
-                    </svg>
-                    <span class="fab-ring" aria-hidden="true"></span>
-                </button>
-
-                <button class="skip-btn ripple" id="btnForward" type="button" aria-label="前进 10 秒">
-                    <svg class="skip-icon" viewBox="0 -960 960 960" aria-hidden="true">
-                        <path d="M339.5-108.5q-65.5-28.5-114-77t-77-114Q120-365 120-440t28.5-140.5q28.5-65.5 77-114t114-77Q405-800 480-800h6l-34-34q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T509-891l103 103q12 12 12 28t-12 28L509-629q-12 12-28.5 11.5T452-630q-11-12-11.5-28t11.5-28l34-34h-6q-117 0-198.5 81.5T200-440q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80q-75 0-140.5-28.5ZM360-500h-30q-13 0-21.5-8.5T300-530q0-13 8.5-21.5T330-560h60q13 0 21.5 8.5T420-530v180q0 13-8.5 21.5T390-320q-13 0-21.5-8.5T360-350v-150Zm140 180q-17 0-28.5-11.5T460-360v-160q0-17 11.5-28.5T500-560h80q17 0 28.5 11.5T620-520v160q0 17-11.5 28.5T580-320h-80Zm20-60h40v-120h-40v120Z"/>
-                    </svg>
-                </button>
+            <!-- 收起形态：长胶囊 -->
+            <div class="player-mini" id="playerMini">
+                <div class="mini-inner">
+                    <button class="mini-open ripple" id="btnMiniOpen" type="button" aria-label="展开播放器">
+                        <span class="ripple-clip" aria-hidden="true"></span>
+                        <span class="mini-cover" id="miniCover" aria-hidden="true">
+                            <img class="mini-cover-img" id="miniCoverImg" alt="" draggable="false">
+                            <img class="mini-cover-img" id="miniCoverImgAlt" alt="" draggable="false">
+                        </span>
+                        <span class="mini-meta">
+                            <span class="mini-title" id="miniTitle">Name</span>
+                            <span class="mini-artist" id="miniArtist">Artist</span>
+                        </span>
+                    </button>
+                    <button class="mini-btn ripple" id="btnMiniPrev" type="button" aria-label="上一曲">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button class="mini-btn ripple" id="btnMiniPlay" type="button" aria-label="播放">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
+                            <g class="icon-pause">
+                                <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
+                                <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
+                            </g>
+                        </svg>
+                    </button>
+                    <button class="mini-btn ripple" id="btnMiniNext" type="button" aria-label="下一曲">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
+                </div>
             </div>
         </section>
-    </section>
+
+        <!-- 播放列表：收起时是与播放器同宽的长胶囊，展开后列出曲目 -->
+        <section class="playlist-card" id="playlistCard" aria-label="播放列表">
+            <button class="playlist-head ripple" id="btnPlaylist" type="button"
+                    aria-expanded="false" aria-controls="playlistBody">
+                <svg class="playlist-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h12v2H3zM3 11h12v2H3zM3 16h8v2H3zM17 9v8l5-4z"/>
+                </svg>
+                <span class="playlist-head-title">播放列表</span>
+                <span class="playlist-count" id="playlistCount"></span>
+                <svg class="playlist-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                </svg>
+            </button>
+            <div class="playlist-body" id="playlistBody">
+                <ol class="playlist-list" id="playlistList"></ol>
+            </div>
+        </section>
+    </div>
 
     <div class="error-layer" id="errorLayer" hidden>
         <div class="error-card" role="alert">
@@ -93,7 +155,7 @@
         </div>
     </div>
 
-    <!-- 播放地址由 Script/player.js 注入（带时间戳参数穿透缓存，见 TRACK_URL） -->
+    <!-- 曲目来源由 Script/player.js 注入（images/MusicLog/music.json） -->
     <audio id="audio" preload="metadata"></audio>
     <noscript><p class="noscript">需要启用 JavaScript 才能使用播放器。</p></noscript>
 </main>
