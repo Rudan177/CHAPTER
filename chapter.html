@@ -4,15 +4,491 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="chapterNext/frame.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <title>CHAPTER</title>
+        <style>
+            /* ---- 主题变量（支持手动深浅色） ---- */
+            :root,
+            [data-theme="light"] {
+                --bg-primary: #f4f4f4;
+                --bg-secondary: rgba(255, 255, 255, 0.115);
+                --bg-card: rgba(0, 174, 144, 0.2);
+                --text-primary: #000000;
+                --text-secondary: #333333;
+                --text-muted: #666666;
+                --text-hint: #999999;
+                --border-color: #000000;
+                --menu-icon-color: #000000;
+                --link-color: #000000;
+                --link-hover: blue;
+            }
+
+            /* 自动跟随系统深色模式（无手动设置时生效） */
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme]) {
+                    --bg-primary: #1a1a2e;
+                    --bg-secondary: rgba(255, 255, 255, 0.05);
+                    --bg-card: rgba(0, 174, 144, 0.15);
+                    --text-primary: #ffffff;
+                    --text-secondary: #e0e0e0;
+                    --text-muted: #b0b0b0;
+                    --text-hint: #888888;
+                    --border-color: rgba(255, 255, 255, 0.2);
+                    --menu-icon-color: #ffffff;
+                    --link-color: #ffffff;
+                    --link-hover: #00AE00;
+                }
+            }
+
+            /* 手动覆盖：用户手动切换时优先级高于系统 */
+            [data-theme="dark"] {
+                --bg-primary: #1a1a2e;
+                --bg-secondary: rgba(255, 255, 255, 0.05);
+                --bg-card: rgba(0, 174, 144, 0.15);
+                --text-primary: #ffffff;
+                --text-secondary: #e0e0e0;
+                --text-muted: #b0b0b0;
+                --text-hint: #888888;
+                --border-color: rgba(255, 255, 255, 0.2);
+                --menu-icon-color: #ffffff;
+                --link-color: #ffffff;
+                --link-hover: #00AE00;
+            }
+
+            /* ---- 字体切换 ---- */
+            [data-font="serif"] {
+                --font-family: 'NotoSerif', 'HMSC', serif, sans-serif;
+            }
+
+            @font-face {
+                font-family: 'NotoSerif';
+                src: url('font/NotoSerif.otf') format('opentype');
+                font-style: normal;
+                font-display: swap;
+            }
+
+            /* 菜单锚定在欢迎卡片内；底部外边距与搜索框下方间距（20px）保持一致 */
+            .welc {
+                position: relative;
+                margin-bottom: 20px;
+            }
+
+            /* ---- SS 简洁菜单 ---- */
+            .ss-menu-btn {
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                width: 28px;
+                height: 28px;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                z-index: 10000;
+                transition: all 0.3s ease;
+            }
+
+            .ss-menu-btn .ss-menu-icon {
+                position: absolute;
+                font-size: 24px;
+                color: var(--text-primary);
+                transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            .ss-menu-btn .ss-menu-hamburger {
+                opacity: 1;
+                transform: rotate(0deg) scale(1);
+            }
+
+            .ss-menu-btn .ss-menu-close {
+                opacity: 0;
+                transform: rotate(90deg) scale(0.3);
+            }
+
+            .ss-menu-btn.open .ss-menu-hamburger {
+                opacity: 0;
+                transform: rotate(-90deg) scale(0.3);
+            }
+
+            .ss-menu-btn.open .ss-menu-close {
+                opacity: 1;
+                transform: rotate(0deg) scale(1);
+            }
+
+            /* ---- 弹出面板 ---- */
+            .ss-menu-panel {
+                position: absolute;
+                bottom: 44px;
+                right: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                opacity: 0;
+                transform: translateY(16px);
+                pointer-events: none;
+                transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                z-index: 9999;
+            }
+
+            .ss-menu-panel.open {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
+            }
+
+            /* 子按钮依次出现效果 */
+            .ss-menu-panel.open .ss-menu-item:nth-child(1) {
+                transition-delay: 0.05s;
+            }
+
+            .ss-menu-panel.open .ss-menu-item:nth-child(2) {
+                transition-delay: 0.1s;
+            }
+
+            .ss-menu-item {
+                width: 28px;
+                height: 28px;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                color: var(--text-secondary);
+                font-size: 24px;
+                transition: all 0.25s ease;
+                position: relative;
+            }
+
+            /* 让 Material Icons 继承按钮字号，与汉堡图标统一 */
+            .ss-menu-item .material-icons {
+                font-size: inherit;
+            }
+
+            /* 锁定状态：右上角小锁图标 */
+            .ss-menu-item .lock-icon {
+                display: none;
+                position: absolute;
+                top: -2px;
+                right: -2px;
+                width: 8px;
+                height: 8px;
+                fill: var(--menu-icon-color);
+            }
+
+            .ss-menu-item.locked .lock-icon {
+                display: inline;
+            }
+
+            /* 字体按钮：Aa 图标 */
+            .ss-menu-font-item {
+                font-family: var(--font-family);
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                font-size: 14px;
+            }
+
+            /* ---- 搜索框 ---- */
+            .search {
+                width: 75%;
+                margin: 0 auto 30px;
+            }
+
+            .search-box {
+                display: flex;
+                align-items: center;
+                background: var(--bg-secondary);
+                border: 2px solid var(--border-color);
+                backdrop-filter: blur(10px);
+                border-radius: 12px;
+                padding: 8px;
+                animation: kuangjia 0.6s ease-out 1;
+                transition: border-color 0.3s ease;
+                gap: 12px;
+                overflow: hidden;
+            }
+
+            .search-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px;
+                border-radius: 8px;
+                font-size: 24px;
+                color: var(--text-hint);
+                user-select: none;
+            }
+
+            .search-box:focus-within {
+                border-color: var(--text-primary);
+            }
+
+            .search-input {
+                flex: 1;
+                margin-left: -12px;
+                border: none;
+                outline: none;
+                background: transparent;
+                font-family: var(--font-family);
+                font-size: 16px;
+                color: var(--text-primary);
+                padding: 12px 4px;
+            }
+
+            .search-input::placeholder {
+                color: var(--text-hint);
+            }
+
+            .search-time-btn {
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-muted);
+                transition: all 0.2s ease;
+            }
+
+            .search-time-btn:hover {
+                background: rgba(0, 174, 144, 0.12);
+                color: var(--text-primary);
+            }
+
+            .search-time-btn.active {
+                color: var(--text-primary);
+                background: rgba(0, 174, 144, 0.35);
+                box-shadow: inset 0 0 0 1.5px rgba(0, 174, 144, 0.5);
+            }
+
+            .search-clear-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+                margin-right: -12px;
+                line-height: 1;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-hint);
+                transition: color 0.2s ease;
+            }
+
+            .search-clear-btn .material-icons {
+                font-size: 16px;
+            }
+
+            .search-clear-btn:hover {
+                color: var(--text-primary);
+            }
+
+            .search-clear-btn.visible {
+                display: flex;
+            }
+
+            .no-result {
+                text-align: center;
+                font-family: var(--font-family);
+                font-size: 18px;
+                color: var(--text-muted);
+                padding: 40px;
+                display: none;
+            }
+
+            .no-result.show {
+                display: block;
+            }
+
+            /* ---- 高亮样式 ---- */
+            mark {
+                background: rgba(0, 174, 144, 0.35);
+                color: inherit;
+                border-radius: 3px;
+                padding: 0 2px;
+            }
+
+            .zhengwen h1.highlight {
+                background: rgba(0, 174, 144, 0.25);
+                border-radius: 8px;
+                padding: 4px 12px;
+            }
+
+            @media (max-width: 768px) {
+                /* 卡片改为内容自适应高度 + 底部预留菜单条，避免文字被固定高度挤出、图标压住文字 */
+                .welc {
+                    height: auto;
+                    box-sizing: border-box; /* 让 90% 宽度包含左右内边距，与搜索框同宽 */
+                    padding: 36px 16px 48px;
+                }
+
+                .ss-menu-btn {
+                    width: 24px;
+                    height: 24px;
+                }
+
+                .ss-menu-btn .ss-menu-icon {
+                    font-size: 22px;
+                }
+
+                /* 移动端菜单改为横向工具条，整体落在卡片底部预留区内 */
+                .ss-menu-panel {
+                    flex-direction: row;
+                    align-items: center;
+                    bottom: 10px;
+                    right: 44px;
+                    gap: 6px;
+                    transform: translateX(16px);
+                }
+
+                .ss-menu-panel.open {
+                    transform: translateX(0);
+                }
+
+                .ss-menu-item {
+                    width: 24px;
+                    height: 24px;
+                    font-size: 22px;
+                }
+
+                .ss-menu-font-item {
+                    font-size: 12px;
+                }
+
+                .search {
+                    width: 90%;
+                }
+            }
+
+            @media (max-width: 480px) {
+                /* 与欢迎卡片、正文容器保持一致（90%） */
+                .search {
+                    width: 90%;
+                }
+
+                .search-input {
+                    font-size: 14px;
+                }
+            }
+
+            @media (max-width: 400px) {
+                .search-box {
+                    padding: 6px;
+                    gap: 6px;
+                }
+
+                .search-icon {
+                    padding: 4px;
+                    font-size: 20px;
+                }
+
+                .search-time-btn {
+                    padding: 4px;
+                }
+
+                .search-clear-btn .material-icons {
+                    font-size: 14px;
+                }
+
+                .search-input {
+                    margin-left: -6px;
+                    padding: 8px 2px;
+                }
+
+                .search-clear-btn {
+                    margin-right: -6px;
+                }
+            }
+
+            @media (max-width: 300px) {
+                .search-box {
+                    padding: 4px;
+                    gap: 4px;
+                }
+
+                .search-icon {
+                    padding: 2px;
+                    font-size: 16px;
+                }
+
+                .search-time-btn {
+                    padding: 2px;
+                    font-size: 16px;
+                }
+
+                .search-clear-btn .material-icons {
+                    font-size: 12px;
+                }
+
+                .search-input {
+                    margin-left: -4px;
+                    padding: 6px 1px;
+                    font-size: 12px;
+                }
+
+                .search-clear-btn {
+                    margin-right: -4px;
+                }
+            }
+        </style>
     </head>
     <body>
         <div class="decoration">CHAPTER</div>
         <div class="welc">
-            <div class="ultra">ByRUDAN CHAPTER <span class="version" style="font-family: 'code';">NEXTv0.2</span></div>
+            <div class="ultra">ByRUDAN CHAPTER <span class="version" style="font-family: 'code';">NEXTv0.3</span></div>
             <div class="pro">和大家分享一些有关OOOInterface及相关周边产品的信息，和我个人的一些见闻。</div>
+            <!-- SS 简洁菜单 -->
+            <div class="ss-menu-btn" id="ssMenuBtn">
+                <span class="material-icons ss-menu-icon ss-menu-hamburger">menu</span>
+                <span class="material-icons ss-menu-icon ss-menu-close">close</span>
+            </div>
+            <div class="ss-menu-panel" id="ssMenuPanel">
+                <button class="ss-menu-item" id="ssThemeItem"></button>
+                <button class="ss-menu-item ss-menu-font-item" id="ssFontItem">Aa</button>
+            </div>
+        </div>
+        <div class="search">
+            <div class="search-box">
+                <span class="material-icons search-icon">search</span>
+                <input type="text" class="search-input" placeholder="搜索" id="searchInput">
+                <button class="search-clear-btn" id="searchClearBtn" title="清除">
+                    <span class="material-icons">close</span>
+                </button>
+                <button class="search-time-btn" id="searchTimeBtn" title="仅搜索日期">
+                    <span class="material-icons">schedule</span>
+                </button>
+            </div>
+            <div class="no-result" id="noResult">无匹配结果</div>
         </div>
         <div class="zhengwen-container">
+            <div class="zhengwen">
+                <h1>2026年9月26日 星期六</h1>
+                <h2>随手写</h2>
+                <p>自上次更新以来，整整二十天没有更新过内容了。明天是 OOOInterface 32 正式发布的时间。结束我会第一时间在这里发布下载链接。</p>
+                <h2>OOOInterface 32 新增多项实用功能：</h2>
+                <ul>
+                    <li>新增全新热搜词功能（该功能需在手动开启且输入字符大于4时触发）</li>
+                    <li>新增底部名牌功能设置项</li>
+                    <li>新增音频播放功能</li>
+                    <li>新增OCP播控：开始播放OCP后，悬停底部铭牌即可呼出媒体播控（需在设置中开启）</li>
+                    <li>新增全新配色：地球色</li>
+                </ul>
+                <h3>对于音频播控：</h3>
+                <p>OOOInterface 致力于通过不断的更新为用户带来更好的体验。但受限于时间和精力，在可见的未来几个月里，OOOInterface 都无法以 7月 8 月的的速度更新。但请不必悲哀，这并不意味着 OOOInterface 将彻底消失。在团结协作下，OOOInterface 承诺，仍能在每周提供 尝鲜版 渠道更新，每个月提供 正式版 渠道更新。除此之外，我们还策划了另一项活动——OCP（OOOInterface Concert Play）。OOOInterface 将公开征集用户的音乐喜好或需求，每日在 OOOInterface 和 CHAPTER 为用户提供一首或多首音乐。</p>
+                <p>您可以在 OOOInterface 5.1.2 及后续版本设置页面底部右键反馈按钮 或 OOOInterface 26 及后续版本设置页面右键应用按钮打开开发者模式后右键顶部 Bug_report 图标按钮 或 OOOInterface 32 及后续待发布的版本设置页面下滑找到“底部名牌功能”设置并将右键或双击底部名牌功能设为“音频播控”后在底部名牌执行对应操作聆听（此外您还可以再设置打开“OCP播控”方便控制播放）。</p>
+                <p>当然，确切的，OOOInterface 仅能完成简单的音频播放，而历史音频等都无法完成。因此在 CHAPTER 中，同样上线了 <a href="https://rudan177.github.io/CHAPTER/player.html">CHAPTER 音乐播放器</a></p>
+                <p>若您想提供自己的喜好内容，欢迎向 wyjcrtu@proton.me 投稿（您可以直接投稿文件或曲名）；OOOInterface 也会不定期开展征集活动。</p>
+                <h3>对于漏洞修复：</h3>
+                <p>近期借助人工智能，我们受到了大量问题反馈。因此 OOOInterface 决定，将原本每月一次的补丁发布频率提升至二至三次。您可以定期关注<a href="https://ooointerface.byrudan.workers.dev/Interface/bd">OOOInterface 支持列表</a>，或安装并打开 OUA 的自动更新来获得最新补丁版本。</p>
+                <p>OOOInterface 希望通过这些内容，能够为给为用户带来更棒的体验。为更棒的 OOOInterface 预备好！</p>
+            </div>
             <div class="zhengwen">
                 <h1>2026年9月6日 知更鸟哥哥</h1>
                 <h2>随手写</h2>
@@ -29,5 +505,350 @@
                 </ul>
             </div>
         </div>
+        <script>
+            // ---- SS 简洁菜单：深浅色 + 字体切换 ----
+            document.addEventListener('DOMContentLoaded', function () {
+                'use strict';
+
+                var menuBtn = document.getElementById('ssMenuBtn');
+                var menuPanel = document.getElementById('ssMenuPanel');
+                var themeItem = document.getElementById('ssThemeItem');
+                var fontItem = document.getElementById('ssFontItem');
+                var html = document.documentElement;
+                var isOpen = false;
+                var LOCK_KEY = 'ss_theme_lock';
+                var FONT_KEY = 'font';
+
+                if (!menuBtn || !menuPanel || !themeItem || !fontItem) return;
+
+                // 更新主题图标（检测实际视觉主题）
+                function updateThemeIcon() {
+                    var theme = html.getAttribute('data-theme');
+                    if (!theme) {
+                        // 系统跟随模式 → 读取系统偏好
+                        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    }
+                    var isDark = theme === 'dark';
+                    themeItem.innerHTML = (isDark
+                        ? '<span class="material-icons">light_mode</span>'
+                        : '<span class="material-icons">dark_mode</span>')
+                        + '<svg class="lock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20" height="20" fill="currentColor"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm0-80h480v-400H240v400Zm240-120q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80ZM240-160v-400 400Z" /></svg>';
+                }
+
+                // 更新锁定状态
+                function updateLockState() {
+                    var locked = localStorage.getItem(LOCK_KEY);
+                    themeItem.classList.toggle('locked', !!locked);
+                }
+
+                // 应用主题（不保存到 localStorage）
+                function setTheme(theme) {
+                    html.setAttribute('data-theme', theme);
+                }
+
+                // 切换到系统跟随（清除 data-theme，让 @media 接管）
+                function followSystem() {
+                    html.removeAttribute('data-theme');
+                }
+
+                // 应用字体
+                function applyFont(font) {
+                    if (font === 'serif') {
+                        html.setAttribute('data-font', 'serif');
+                    } else {
+                        html.removeAttribute('data-font');
+                    }
+                }
+
+                // 切换字体并保存
+                function toggleFont() {
+                    var next = html.getAttribute('data-font') === 'serif' ? 'hmsc' : 'serif';
+                    applyFont(next);
+                    localStorage.setItem(FONT_KEY, next);
+                }
+
+                // 初始化
+                function initTheme() {
+                    var locked = localStorage.getItem(LOCK_KEY);
+                    if (locked) {
+                        // 锁定状态：恢复锁定的主题
+                        setTheme(locked);
+                    } else {
+                        // 未锁定：跟随系统
+                        followSystem();
+                    }
+                    updateThemeIcon();
+                    updateLockState();
+                }
+
+                // 切换菜单
+                function toggleMenu(open) {
+                    isOpen = open !== undefined ? open : !isOpen;
+                    menuBtn.classList.toggle('open', isOpen);
+                    menuPanel.classList.toggle('open', isOpen);
+                }
+
+                // 关闭菜单（点击外部）
+                function closeMenu(e) {
+                    if (!isOpen) return;
+                    if (menuBtn.contains(e.target) || menuPanel.contains(e.target)) return;
+                    toggleMenu(false);
+                }
+
+                // ---- 事件绑定 ----
+
+                menuBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    toggleMenu();
+                });
+
+                // 主题切换（左键：临时切换，不保存）
+                themeItem.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var current = html.getAttribute('data-theme');
+                    if (!current) {
+                        // 系统跟随状态 → 检测当前系统主题
+                        var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        setTheme(systemDark ? 'light' : 'dark');
+                    } else {
+                        var next = current === 'dark' ? 'light' : 'dark';
+                        setTheme(next);
+                    }
+                    // 解锁（切换即解除锁定）
+                    localStorage.removeItem(LOCK_KEY);
+                    updateThemeIcon();
+                    updateLockState();
+                    setTimeout(function () { toggleMenu(false); }, 200);
+                });
+
+                // 主题锁定（右键：锁定当前主题到 localStorage）
+                themeItem.addEventListener('contextmenu', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var locked = localStorage.getItem(LOCK_KEY);
+                    if (locked) {
+                        // 已锁定 → 解锁
+                        localStorage.removeItem(LOCK_KEY);
+                        followSystem();
+                    } else {
+                        // 未锁定 → 锁定当前主题
+                        var current = html.getAttribute('data-theme');
+                        if (!current) {
+                            // 系统跟随中 → 检测系统主题并锁定
+                            current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                            setTheme(current);
+                        }
+                        localStorage.setItem(LOCK_KEY, current);
+                    }
+                    updateThemeIcon();
+                    updateLockState();
+                    // 不关闭菜单，让用户看到锁定反馈
+                });
+
+                // 字体切换
+                fontItem.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    toggleFont();
+                    setTimeout(function () { toggleMenu(false); }, 200);
+                });
+
+                // 点击页面其它区域关闭
+                document.addEventListener('click', closeMenu);
+
+                // 监听系统深色模式变化（未锁定时自动跟随）
+                var mql = window.matchMedia('(prefers-color-scheme: dark)');
+                mql.addEventListener('change', function () {
+                    if (!localStorage.getItem(LOCK_KEY)) {
+                        followSystem();
+                        updateThemeIcon();
+                    }
+                });
+
+                // 监听主题变化同步图标
+                var themeObserver = new MutationObserver(function () {
+                    updateThemeIcon();
+                });
+                themeObserver.observe(html, { attributes: true, attributeFilter: ['data-theme'] });
+
+                // 启动
+                initTheme();
+                if (localStorage.getItem(FONT_KEY) === 'serif') applyFont('serif');
+            });
+
+            // ---- 搜索框 ----
+            document.addEventListener('DOMContentLoaded', function () {
+                'use strict';
+
+                var searchInput = document.getElementById('searchInput');
+                var searchTimeBtn = document.getElementById('searchTimeBtn');
+                var searchClearBtn = document.getElementById('searchClearBtn');
+                var noResult = document.getElementById('noResult');
+                var timeOnlyMode = false;
+                var originalHTMLMap = new WeakMap();
+
+                if (!searchInput || !searchTimeBtn || !searchClearBtn || !noResult) return;
+
+                // 转义正则特殊字符
+                function escapeRegExp(str) {
+                    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                }
+
+                // 保存文章原始 HTML（仅一次）
+                function saveOriginal(article) {
+                    if (!originalHTMLMap.has(article)) {
+                        originalHTMLMap.set(article, article.innerHTML);
+                    }
+                }
+
+                // 恢复单篇文章
+                function restoreArticle(article) {
+                    var original = originalHTMLMap.get(article);
+                    if (original !== undefined) {
+                        article.innerHTML = original;
+                    }
+                }
+
+                // 恢复全部文章
+                function restoreAll() {
+                    document.querySelectorAll('.zhengwen-container .zhengwen').forEach(restoreArticle);
+                }
+
+                // 获取元素文本（可选排除特定选择器内的内容）
+                function getTextExcluding(element, excludeSelector) {
+                    if (!excludeSelector) return element.textContent;
+                    var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+                        acceptNode: function (node) {
+                            return node.parentElement && node.parentElement.closest(excludeSelector)
+                                ? NodeFilter.FILTER_REJECT
+                                : NodeFilter.FILTER_ACCEPT;
+                        }
+                    });
+                    var text = '';
+                    while (walker.nextNode()) {
+                        text += walker.currentNode.textContent;
+                    }
+                    return text;
+                }
+
+                // 在元素内高亮所有匹配文本（可选排除特定选择器内的文本节点）
+                function highlightTextInElement(element, query, excludeSelector) {
+                    if (!query) return;
+                    var escaped = escapeRegExp(query);
+                    var regex = new RegExp(escaped, 'gi');
+
+                    var acceptFilter = excludeSelector
+                        ? function (node) {
+                            return node.parentElement && node.parentElement.closest(excludeSelector)
+                                ? NodeFilter.FILTER_REJECT
+                                : NodeFilter.FILTER_ACCEPT;
+                        }
+                        : null;
+
+                    var treeWalker = document.createTreeWalker(
+                        element,
+                        NodeFilter.SHOW_TEXT,
+                        acceptFilter ? { acceptNode: acceptFilter } : null,
+                        false
+                    );
+                    var textNodes = [];
+                    while (treeWalker.nextNode()) {
+                        textNodes.push(treeWalker.currentNode);
+                    }
+
+                    textNodes.forEach(function (node) {
+                        if (node.parentNode === null) return;
+                        var text = node.textContent;
+                        regex.lastIndex = 0;
+                        if (!regex.test(text)) return;
+
+                        var fragment = document.createDocumentFragment();
+                        var lastIndex = 0;
+                        regex.lastIndex = 0;
+                        var match;
+                        while ((match = regex.exec(text)) !== null) {
+                            var before = text.substring(lastIndex, match.index);
+                            if (before) fragment.appendChild(document.createTextNode(before));
+                            var mark = document.createElement('mark');
+                            mark.textContent = match[0];
+                            fragment.appendChild(mark);
+                            lastIndex = regex.lastIndex;
+                        }
+                        var remaining = text.substring(lastIndex);
+                        if (remaining) fragment.appendChild(document.createTextNode(remaining));
+                        node.parentNode.replaceChild(fragment, node);
+                    });
+                }
+
+                // 主搜索函数
+                function performSearch() {
+                    var query = searchInput.value.trim().toLowerCase();
+                    var articles = document.querySelectorAll('.zhengwen-container .zhengwen');
+                    var hasVisible = false;
+
+                    // 先恢复所有文章原始内容（清除之前的高亮）
+                    restoreAll();
+
+                    // 控制清除按钮显隐
+                    if (searchInput.value.trim()) {
+                        searchClearBtn.classList.add('visible');
+                    } else {
+                        searchClearBtn.classList.remove('visible');
+                    }
+
+                    if (!query) {
+                        articles.forEach(function (a) { a.style.display = ''; });
+                        noResult.classList.remove('show');
+                        return;
+                    }
+
+                    articles.forEach(function (article) {
+                        var shouldShow = false;
+
+                        if (timeOnlyMode) {
+                            // 仅搜索日期模式：匹配则整行 h1 高亮
+                            var h1 = article.querySelector('h1');
+                            if (h1) {
+                                var h1Text = h1.textContent.toLowerCase();
+                                if (h1Text.indexOf(query) !== -1) {
+                                    shouldShow = true;
+                                    h1.classList.add('highlight');
+                                }
+                            }
+                        } else {
+                            // 全文搜索模式：匹配文字高亮（排除 h1）
+                            var allText = getTextExcluding(article, 'h1').toLowerCase();
+                            if (allText.indexOf(query) !== -1) {
+                                shouldShow = true;
+                                highlightTextInElement(article, query, 'h1');
+                            }
+                        }
+
+                        article.style.display = shouldShow ? '' : 'none';
+                        if (shouldShow) hasVisible = true;
+                    });
+
+                    noResult.classList.toggle('show', !hasVisible);
+                }
+
+                // ---- 事件绑定 ----
+
+                searchTimeBtn.addEventListener('click', function () {
+                    timeOnlyMode = !timeOnlyMode;
+                    this.classList.toggle('active');
+                    performSearch();
+                });
+
+                searchClearBtn.addEventListener('click', function () {
+                    searchInput.value = '';
+                    searchInput.focus();
+                    performSearch();
+                });
+
+                searchInput.addEventListener('input', performSearch);
+
+                // 保存页面上已有的文章原始 HTML
+                document.querySelectorAll('.zhengwen-container .zhengwen').forEach(saveOriginal);
+            });
+        </script>
     </body>
 </html>
