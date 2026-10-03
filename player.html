@@ -183,18 +183,51 @@
     <noscript><p class="noscript">需要启用 JavaScript 才能使用播放器。</p></noscript>
 </main>
 
+<!-- 曲目日历：点播放列表行左侧的日期唤出。范围实时算：
+     下界 = 清单里最早的曲目月，上界 = max(最新曲目月, 当月) -->
+<div class="cal-layer" id="calLayer" hidden>
+    <div class="calendar" id="calendar" role="dialog" aria-modal="false" aria-label="曲目日历" tabindex="-1">
+        <div class="cal-head">
+            <button class="cal-nav ripple" id="calPrevMonth" type="button" aria-label="上个月">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="cal-title" id="calTitle" type="button" aria-label="选择年月" aria-expanded="false">2026年9月</button>
+            <button class="cal-nav ripple" id="calNextMonth" type="button" aria-label="下个月">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+        </div>
+        <div class="cal-weekdays" id="calWeekdays" aria-hidden="true"></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <!-- 年 / 月选择：跨 73 年靠这一层跳，别让人一个月一个月点 -->
+        <div class="cal-picker" id="calPicker" hidden>
+            <div class="cal-year-row">
+                <button class="cal-nav ripple" id="calPrevYear" type="button" aria-label="上一年">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <span class="cal-year-label" id="calYearLabel">2026年</span>
+                <button class="cal-nav ripple" id="calNextYear" type="button" aria-label="下一年">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+            </div>
+            <div class="cal-months" id="calMonths"></div>
+        </div>
+    </div>
+</div>
+
 <!-- 播放器右键菜单：上方两个下载动作 + 下方三个显示开关（MD3 Expressive） -->
 <div class="menu-layer" id="menuLayer" hidden>
-    <div class="menu" id="playerMenu" role="menu" aria-label="播放器菜单">
+    <div class="menu" id="playerMenu" role="menu" aria-label="播放器菜单" tabindex="-1">
         <button class="menu-item" type="button" role="menuitem" data-act="cover" id="menuDownloadCover">
-            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            <!-- Material Symbols: imagesmode（实心 · 圆角） -->
+            <svg class="menu-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm80-160h400q12 0 18-11t-2-21L586-459q-6-8-16-8t-16 8L450-320l-74-99q-6-8-16-8t-16 8l-80 107q-8 10-2 21t18 11Zm60-280q25 0 42.5-17.5T400-620q0-25-17.5-42.5T340-680q-25 0-42.5 17.5T280-620q0 25 17.5 42.5T340-560Z"/>
             </svg>
             <span class="menu-label">下载封面</span>
         </button>
         <button class="menu-item" type="button" role="menuitem" data-act="lyrics" id="menuDownloadLyrics">
-            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            <!-- Material Symbols: lyrics（实心 · 圆角） -->
+            <svg class="menu-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                <path d="M280-400h80q17 0 28.5-11.5T400-440q0-17-11.5-28.5T360-480h-80q-17 0-28.5 11.5T240-440q0 17 11.5 28.5T280-400Zm480-80q-50 0-85-35t-35-85q0-50 35-85t85-35q11 0 21 2t19 5v-167q0-17 11.5-28.5T840-920h80q17 0 28.5 11.5T960-880q0 17-11.5 28.5T920-840h-40v240q0 50-35 85t-85 35Zm-480-40h200q17 0 28.5-11.5T520-560q0-17-11.5-28.5T480-600H280q-17 0-28.5 11.5T240-560q0 17 11.5 28.5T280-520Zm0-120h200q17 0 28.5-11.5T520-680q0-17-11.5-28.5T480-720H280q-17 0-28.5 11.5T240-680q0 17 11.5 28.5T280-640Zm-40 400-92 92q-19 19-43.5 8.5T80-177v-623q0-33 23.5-56.5T160-880h440q31 0 54.5 19t23.5 49q0 14-6.5 25T654-769q-44 27-69 72t-25 97q0 54 26.5 100t73.5 73q22 13 35 34.5t13 47.5q0 45-31.5 75T600-240H240Z"/>
             </svg>
             <span class="menu-label">下载歌词</span>
         </button>
@@ -216,6 +249,14 @@
                 <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </svg>
             <span class="menu-label">显示上下曲</span>
+        </button>
+        <div class="menu-divider" role="separator"></div>
+        <button class="menu-item" type="button" role="menuitem" data-act="submit">
+            <!-- Material Symbols: send（实心 · 圆角） -->
+            <svg class="menu-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                <path d="M176-183q-20 8-38-3.5T120-220v-180l320-80-320-80v-180q0-22 18-33.5t38-3.5l616 260q25 11 25 37t-25 37L176-183Z"/>
+            </svg>
+            <span class="menu-label">投稿</span>
         </button>
     </div>
 </div>

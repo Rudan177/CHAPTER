@@ -1006,28 +1006,46 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     }
 }
 
-/* 曲目行：等化器占位 | 日期 | 曲名/歌手 | 类型 | 时长 */
+/* 曲目行：等化器占位 | 日期 | 曲名/歌手 | 类型 | 时长。
+   日期列里那颗按钮挂在 li 上（绝对定位压过来，原因见 .track-date），
+   所以列几何写在 li 上供行按钮与日期按钮共用 —— 各写一套的话，
+   改一个间隙两处就会错位 */
+.track-item {
+    position: relative;
+    --track-pad-x: var(--space-300);
+    --track-gap: var(--space-300);
+    --track-eq-w: 14px;
+    --track-date-w: 44px;
+}
+
 .track-row {
     display: grid;
-    grid-template-columns: 14px 44px minmax(0, 1fr) auto auto;
+    grid-template-columns: var(--track-eq-w) var(--track-date-w) minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: var(--space-300);
+    gap: var(--track-gap);
     width: 100%;
-    padding: 9px var(--space-300);
+    padding: 9px var(--track-pad-x);
     border-radius: var(--radius-playlist-row);   /* 与列表卡片展开半径同源，保证同心 */
     overflow: hidden;
     text-align: left;
     transition: background-color .22s var(--ease-emphasized);
 }
 
-/* 回退值用 --surface-container-high（与 13~7% 的叠色观感接近），
-   保证不支持 color-mix 时当前曲目依然有可见的底色 */
-.track-row:hover { background: var(--surface-container-high); }
-.track-row:hover { background: color-mix(in oklab, var(--on-surface) 7%, transparent); }
+/* 日期按钮是行的兄弟节点，悬停在日期列上时行本身不再 :hover，
+   所以整行高亮要挂在 li 上判定 */
+.track-item:hover .track-row { background: var(--surface-container-high); }
+.track-item:hover .track-row { background: color-mix(in oklab, var(--on-surface) 7%, transparent); }
 
 .track-row.is-current {
     background: var(--surface-container-high);
     background: color-mix(in oklab, var(--primary) 13%, transparent);
+}
+
+/* 从日历定位过来的那一行：短暂高亮，1.8s 后由 JS 摘类。
+   与 .is-current 同权重，靠源序分胜负，必须写在它后面 */
+.track-row.is-located {
+    background: var(--surface-container-highest);
+    background: color-mix(in oklab, var(--primary) 24%, transparent);
 }
 
 .track-row:focus-visible {
@@ -1037,6 +1055,7 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
 
 /* 当前曲目指示：播放时三根条弹跳，暂停时保持错落的静态高度 */
 .track-eq {
+    grid-column: 1;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -1070,19 +1089,37 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     to   { transform: scaleY(1); }
 }
 
+/* 日期：压在第 2 列上的独立按钮 —— 点它开日历，点行里其它地方照旧播放。
+   不塞进行按钮里是因为按钮不能嵌套（那会连播放一起触发），
+   不做成行内元素是因为键盘就永远到不了日历。
+   这按钮不带任何形状：悬停 / 聚焦只把数字染成 primary，没有底色药丸、
+   也没有焦点环（所以不用圆角与 overflow，涟漪也已在 JS 里摘掉了） */
 .track-date {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--track-pad-x) + var(--track-eq-w) + var(--track-gap));
+    width: var(--track-date-w);
+    display: grid;
+    place-items: center;
+    padding: 0;
     font-size: 12.5px;
     font-weight: 600;
     color: var(--on-surface-variant);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
-    /* 固定列宽 44px：非 8 位日期会原样输出长串，这里兜住不挤压曲名列 */
-    max-width: 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    outline: none;                    /* 压掉 UA 默认焦点环，也顺手压掉点按时的闪框 */
+    transition: color .22s var(--ease-emphasized);
 }
 
+@media (hover: hover) {
+    .track-date:hover { color: var(--primary); }
+}
+
+.track-date:focus-visible { color: var(--primary); }
+
 .track-main {
+    grid-column: 3;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1107,6 +1144,7 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
 }
 
 .track-type {
+    grid-column: 4;
     flex: none;
     padding: 3px 9px;
     border-radius: var(--shape-full);
@@ -1129,6 +1167,7 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
 }
 
 .track-duration {
+    grid-column: 5;
     min-width: 40px;
     text-align: right;
     font-size: 12.5px;
@@ -1235,6 +1274,10 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     top: 0;
     min-width: 208px;
     max-width: min(320px, calc(100vw - 16px));
+    /* 六项菜单在横屏手机上会比视口还高，留 8px 余量后内部滚动 */
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: var(--space-200);
     border-radius: var(--shape-lg);
     background: var(--surface-container-high);
@@ -1243,6 +1286,9 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     -webkit-backdrop-filter: blur(28px) saturate(1.25);
     box-shadow: 0 22px 52px -14px rgba(20, 26, 48, .5);
     transform-origin: var(--menu-origin, 0 0);
+    /* 菜单唤出后焦点落在容器上（不点亮任何一项），
+       键盘的 Esc / 方向键仍能落在菜单里，但容器自己不画焦点环 */
+    outline: none;
     opacity: 0;
     transform: scale(.82);
     transition: opacity .16s var(--ease-decel),
@@ -1251,7 +1297,7 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
 
 .menu.is-open { opacity: 1; transform: none; }
 
-/* 动作项（下载）与勾选项之间的分组分隔线 */
+/* 分组分隔线：下载动作 / 显示开关 / 投稿 三组之间各一条 */
 .menu-divider {
     height: 1px;
     margin: var(--space-200) var(--space-300);
@@ -1275,8 +1321,21 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     transition: background-color .2s var(--ease-emphasized);
 }
 
-.menu-item:not(:disabled):hover,
+/* 悬停高亮只在真能悬停的设备上给：触屏的 :hover 会「粘」在上一次点过的
+   那一项上（点到别处才消失），会和下一次长按拖到的那一项同时高亮，
+   看上去像同时选中了两项 */
+@media (hover: hover) {
+    .menu-item:not(:disabled):hover { background: color-mix(in oklab, var(--on-surface) 8%, transparent); }
+}
+
 .menu-item:not(:disabled):focus-visible { background: color-mix(in oklab, var(--on-surface) 8%, transparent); }
+
+/* 长按唤出后手指一路拖过来的那一项：触屏没有 hover，按下态（12%）由 JS 加类给 */
+.menu-item.is-pressed { background: color-mix(in oklab, var(--on-surface) 12%, transparent); }
+
+/* 拖动期间兜底：压掉「粘」着的 hover，只留手指当前压着的那一项 */
+body.menu-dragging .menu-item:hover { background: none; }
+body.menu-dragging .menu-item.is-pressed { background: color-mix(in oklab, var(--on-surface) 12%, transparent); }
 
 .menu-item:focus-visible {
     outline: 2px solid var(--primary);
@@ -1316,6 +1375,232 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ---------- 曲目日历（MD3 Expressive） ----------
+   点播放列表行左侧的日期唤出；贴在列表卡片上方（放不下落下方），
+   位置与缩放原点（--cal-origin）由 JS 写入，和右键菜单同一套做法。
+   范围 2026-09 ~ 2099-12，跨 73 年靠「点标题切年 / 月层」跳 */
+.cal-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 17;                 /* 与菜单同级；两者各自的 open 会先关掉对方 */
+}
+
+.cal-layer[hidden] { display: none; }
+
+.calendar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: min(340px, calc(100vw - 16px));
+    padding: var(--space-200) var(--space-300) var(--space-400);
+    border-radius: var(--shape-xl);
+    background: var(--surface-container-high);
+    background: color-mix(in oklab, var(--surface-container-high) 94%, transparent);
+    backdrop-filter: blur(28px) saturate(1.25);
+    -webkit-backdrop-filter: blur(28px) saturate(1.25);
+    box-shadow: var(--shadow-key);
+    transform-origin: var(--cal-origin, 0 0);
+    outline: none;               /* 焦点落在容器上（不点亮任何一格） */
+    opacity: 0;
+    transform: scale(.82);
+    transition: opacity .16s var(--ease-decel),
+                transform .26s var(--ease-emphasized);
+}
+
+.calendar.is-open { opacity: 1; transform: none; }
+
+/* 头行：上月 / 年·月标题（点它切年 / 月层）/ 下月 */
+.cal-head {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: var(--space-200);
+}
+
+.cal-nav {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--shape-full);
+    overflow: hidden;
+    color: var(--on-surface-variant);
+    fill: var(--on-surface-variant);
+    transition: background-color .2s var(--ease-emphasized);
+}
+
+.cal-nav > svg { width: 20px; height: 20px; }
+
+@media (hover: hover) {
+    .cal-nav:not(:disabled):hover { background: color-mix(in oklab, var(--on-surface) 8%, transparent); }
+}
+
+/* 到头了（2026-09 之前 / 2099-12 之后）：MD3 的 38% 前景 */
+.cal-nav:disabled {
+    fill: color-mix(in oklab, var(--on-surface) 38%, transparent);
+    cursor: default;
+}
+
+.cal-nav:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+.cal-title {
+    position: relative;
+    min-height: 40px;
+    padding: 0 var(--space-200);
+    border-radius: var(--shape-full);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-title:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+/* 状态层：8% 悬停 / 12% 按下叠在容器色之上，不覆盖「有曲目」的着色。
+   ::before 是绝对定位，不会挤进 day / month 的网格布局 */
+.cal-title::before,
+.cal-day::before,
+.cal-month::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s var(--ease-emphasized);
+}
+
+@media (hover: hover) {
+    .cal-title:hover::before,
+    .cal-day:not(:disabled):hover::before,
+    .cal-month:not(:disabled):hover::before { opacity: .08; }
+}
+
+.cal-title:active::before,
+.cal-day:not(:disabled):active::before,
+.cal-month:not(:disabled):active::before { opacity: .12; }
+
+.cal-weekdays,
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;                    /* M3 间距刻度无此档，视觉微调 */
+}
+
+/* 作者样式的 display 会盖掉 UA 的 [hidden]，日历内视图切换的隐藏必须自己声明。
+   作用域限定在 .calendar 内，避免影响别处的 [hidden] */
+.calendar [hidden] { display: none; }
+
+/* 年 / 月层里月份箭头没有意义（它改的是底下的日期网格、不是选择层），
+   切成独占一行 */
+.calendar.is-picking .cal-head { grid-template-columns: minmax(0, 1fr); }
+
+.cal-weekday {
+    display: grid;
+    place-items: center;
+    height: 30px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+}
+
+.cal-day {
+    position: relative;
+    justify-self: center;
+    width: min(40px, 100%);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: var(--shape-full);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+    transition: background-color .18s var(--ease-emphasized),
+                color .18s var(--ease-emphasized);
+}
+
+/* 有曲目的日子：只把数字染成 primary，不铺底色 */
+.cal-day.has-tracks {
+    color: color-mix(in oklab, var(--primary) 82%, var(--on-surface));
+}
+
+/* 补齐格的相邻月日期：只占位不可点（MD3 38% 前景） */
+.cal-day.is-out {
+    color: color-mix(in oklab, var(--on-surface) 38%, transparent);
+    cursor: default;
+}
+
+/* 选中：实心 primary（写在着色之后，同权重靠源序胜出） */
+.cal-day.is-selected {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.cal-day:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+/* 年 / 月选择层 */
+.cal-picker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-200);
+}
+
+.cal-year-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: var(--space-200);
+}
+
+.cal-year-label {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-months {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-200);
+}
+
+.cal-month {
+    position: relative;
+    min-height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--shape-full);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+    transition: background-color .18s var(--ease-emphasized),
+                color .18s var(--ease-emphasized);
+}
+
+/* 有曲目的月份：与日期格一致，只用数字颜色标记 */
+.cal-month.has-tracks {
+    color: color-mix(in oklab, var(--primary) 82%, var(--on-surface));
+}
+
+/* 当前正在看的那个月 */
+.cal-month.is-current {
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 70%, transparent);
+    color: color-mix(in oklab, var(--primary) 82%, var(--on-surface));
+}
+
+.cal-month:disabled {
+    color: color-mix(in oklab, var(--on-surface) 38%, transparent);
+    cursor: default;
+}
+
+.cal-month:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 
 /* ============================================================
    移动端适配（compact 窗口）：完整形态改单列（封面在上、信息在下）
@@ -1380,7 +1665,9 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     /* 播放列表：头部收窄、列表限高 */
     .playlist-head { padding: 0 var(--space-400); }
     .playlist-list { max-height: 46vh; padding: 4px var(--space-200) var(--space-200); }
-    .track-row { gap: var(--space-200); padding: 8px var(--space-200); }
+    /* 内边距与间隙收窄一档：日期按钮的 left 跟着 --track-gap 走，不必另写 */
+    .track-item { --track-pad-x: var(--space-200); --track-gap: var(--space-200); }
+    .track-row { padding-top: 8px; padding-bottom: 8px; }
 }
 
 /* 竖屏矮视口：收紧一档（同心 24 + 24 = 48） */

@@ -23,6 +23,9 @@
     const ID3_MAX_TAG = 4 * 1024 * 1024;  // ID3 标签大小上限（防异常数据）
     const FETCH_TIMEOUT = 10000;
 
+    // 右键菜单「投稿」跳转的外部表单
+    const SUBMIT_FORM_URL = 'https://shimo.im/forms/5bqndOGJndsxV4Ay/fill';
+
     // 兜底元数据：仅在 ID3 也解析不出时展示（固定首曲的初始占位）
     const FALLBACK_META = { title: 'OOOInterface', artist: 'ByRUDAN' };
 
@@ -1103,6 +1106,7 @@
         playlist.forEach((t, i) => frag.appendChild(rowFor(t, i)));
         playlistList.appendChild(frag);
         playlistCount.textContent = `${playlist.length} 首`;
+        syncCalDates();            // 清单换了，日历的着色集合跟着重算
         updateCurrentTrack(false);
         syncCurrentDuration();     // 时长可能早于列表就绪，渲染后补一次，避免行停在 --:--
         measureMorphHeights();     // 曲目行数变了，列表自然高度跟着变
@@ -1110,6 +1114,7 @@
 
     function rowFor(t, i) {
         const li = document.createElement('li');
+        li.className = 'track-item';
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'track-row ripple';
@@ -1119,9 +1124,17 @@
         eq.setAttribute('aria-hidden', 'true');
         for (let k = 0; k < 3; k++) eq.appendChild(document.createElement('i'));
 
-        const date = document.createElement('span');
+        // 日期单独成一个按钮、绝对定位压在行的日期列上：点日期开日历、点别处照旧播放。
+        // 不放进行按钮里是因为按钮不能嵌套（那会同时触发播放），
+        // 也不做成行内 span 是因为那样键盘永远到不了日历
+        const date = document.createElement('button');
+        date.type = 'button';
         date.className = 'track-date';
         date.textContent = fmtDate(t.date);
+        date.dataset.date = normDate(t.date);
+        date.setAttribute('aria-label', `${date.textContent}，打开曲目日历`);
+        // 不挂涟漪：日期这颗按钮只靠数字变色表示悬停 / 聚焦，不给它任何形状
+        date.addEventListener('click', () => openCalendar(date.dataset.date, date));
 
         const main = document.createElement('span');
         main.className = 'track-main';
@@ -1143,10 +1156,10 @@
         dur.className = 'track-duration';
         dur.textContent = fmtTime(t.duration);
 
-        btn.append(eq, date, main, type, dur);
+        btn.append(eq, main, type, dur);
         btn.addEventListener('click', () => loadTrack(i, true));
         attachRipple(btn);
-        li.appendChild(btn);
+        li.append(btn, date);
         return li;
     }
 
@@ -1523,16 +1536,54 @@
             `${safeFileName(currentMeta.title)} - ${safeFileName(currentMeta.artist)}.txt`);
     }
 
+    /* ---------------- 投稿 ---------------- */
+    // 新标签打开外部表单：调用点在 click / pointerup 的用户激活窗口内，
+    // 不会被弹窗拦截
+    function openSubmitForm() {
+        window.open(SUBMIT_FORM_URL, '_blank', 'noopener');
+    }
+
     /* ---------------- 右键菜单 ---------------- */
     const menuItems = [...playerMenu.querySelectorAll('.menu-item')];
     const PREF_APPLY = { lyrics: setLyrics, playlist: setPlaylistVisible, trackNav: setTrackNav };
-    const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics };
+    const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics, submit: openSubmitForm };
     const MENU_HIDE_MS = 260;     // 与 .menu 收起过渡同长，收起动画走完再真正隐藏
     let menuHideTimer = 0;
     let menuReturnFocus = null;
+    let menuDrag = null;      // 长按唤出后仍按着的那根手指 { id, touch }，用来支持「不松手拖到某一项」
+    let dragItem = null;      // 手指当前划过、正在高亮的菜单项（禁用项不会落到这里）
+    let dragHit = null;       // 手指压着的那个菜单项（可能被禁用），松手时据此决定做什么
 
     // 可聚焦项：跳掉不可用的下载项，方向键循环才不会卡在一个点不动的按钮上
     const enabledItems = () => menuItems.filter((el) => !el.disabled);
+
+    // 指针落在哪一项上（命中项内部 svg / 文案时回到外层按钮）
+    function itemAtPoint(x, y) {
+        const el = document.elementFromPoint(x, y);
+        return el && el.closest ? el.closest('.menu-item') : null;
+    }
+
+    // 触屏没有 hover，划过的高亮只能自己给类；禁用项不给高亮
+    function setDragItem(item) {
+        // 先摘掉键盘焦点环：它和 .is-pressed 是两套高亮，同时出现就是「两个选项都亮着」。
+        // 放在提前 return 之前 —— 拖到空白 / 禁用项（next 为 null）时同样要清干净
+        const act = document.activeElement;
+        if (act && act.classList.contains('menu-item')) act.blur();
+        const next = item && !item.disabled ? item : null;
+        if (next === dragItem) return;
+        if (dragItem) dragItem.classList.remove('is-pressed');
+        dragItem = next;
+        if (!dragItem) return;
+        dragItem.classList.add('is-pressed');
+    }
+
+    // 拖动期间在 body 上挂标记，用来压掉触屏「粘」着的 hover 态（见 player.css）
+    const setMenuDragging = (on) => document.body.classList.toggle('menu-dragging', on);
+
+    function updateDragHit(x, y) {
+        dragHit = itemAtPoint(x, y);
+        setDragItem(dragHit);
+    }
 
     function syncMenu() {
         for (const item of menuItems) {
@@ -1561,6 +1612,7 @@
     function openMenu(x, y) {
         // 已经开着：只挪位置，不重播入场动画
         if (!menuLayer.hidden && playerMenu.classList.contains('is-open')) { placeMenu(x, y); return; }
+        closeCalendar();                 // 两个浮层不同时开
         clearTimeout(menuHideTimer);
         menuHideTimer = 0;
         if (menuLayer.hidden) {
@@ -1571,12 +1623,21 @@
         placeMenu(x, y);
         void playerMenu.offsetWidth;     // 先落位、提交样式，再开启过渡
         playerMenu.classList.add('is-open');
-        const list = enabledItems();
-        if (list.length) list[0].focus({ preventScroll: true });
+        // 焦点落在菜单容器上，而不是第一项：第一项一进菜单就亮着，
+        // 会让人以为「已经选中了它」，长按拖动时还会跟拖到的那一项同时高亮。
+        // 键盘照旧可用 —— 方向键从容器往下走（list.indexOf 取到 -1 → 落到第一项），
+        // Esc / Tab 也仍由菜单接住
+        playerMenu.focus({ preventScroll: true });
     }
 
     function closeMenu() {
         if (menuLayer.hidden) return;
+        // 菜单若在拖选途中被别的缘由收起（滚动、失焦、Esc），手势作废，免得松手时补一次误触
+        if (menuDrag && menuDrag.touch) detachDragTouch();
+        menuDrag = null;
+        setMenuDragging(false);
+        dragHit = null;
+        setDragItem(null);
         playerMenu.classList.remove('is-open');
         clearTimeout(menuHideTimer);
         menuHideTimer = setTimeout(() => {
@@ -1624,8 +1685,14 @@
 
     window.addEventListener('resize', () => closeMenu());
     window.addEventListener('blur', () => closeMenu());
-    // 页面或列表一滚动菜单就脱离锚点，直接收起（capture 才能听到列表内部滚动）
-    window.addEventListener('scroll', () => closeMenu(), true);
+    // 页面或列表一滚动菜单就脱离锚点，直接收起（capture 才能听到列表内部滚动）。
+    // 菜单自己内部滚动（内容比视口高时）不算脱离锚点，不收起
+    window.addEventListener('scroll', (e) => {
+        // 注意 e.target 未必是节点（合成事件 / 非元素目标），contains 传非节点会抛错
+        const t = e.target;
+        if (t === playerMenu || (t instanceof Node && playerMenu.contains(t))) return;
+        closeMenu();
+    }, true);
 
     /* 封死原生右键菜单：里面藏着「音频另存为 / 复制音频地址」，是抓取 mp3 最省事的入口。
        只压默认行为，不拦事件 —— 卡片自己的 contextmenu 监听在冒泡更早的一层，
@@ -1660,6 +1727,11 @@
             pressTimer = 0;
             suppressClick = true;
             openMenu(e.clientX, e.clientY);
+            // 菜单开了但手指还按着：接着移到哪一项就高亮哪一项，松手即执行
+            menuDrag = { id: e.pointerId, touch: e.pointerType === 'touch' };
+            if (menuDrag.touch) attachDragTouch();
+            setMenuDragging(true);
+            updateDragHit(e.clientX, e.clientY);
         }, LONG_PRESS_MS);
     });
 
@@ -1675,12 +1747,455 @@
         root.addEventListener(type, () => { clearTimeout(pressTimer); pressTimer = 0; });
     });
 
+    /* 唤出后不松手继续拖到目标项。
+       坑：手机上一动超过 ~10px，浏览器就判定成滚动并派发 pointercancel，
+       此后 pointer 事件流彻底断掉（只剩 touch 事件，且目标仍钉在起始元素上）。
+       所以拖动这段以 touch 事件为准，顺带 preventDefault 把并行的滚动按掉；
+       pointer 那条路只在手势没被接管时兜一下。
+       这几个监听按需挂/摘 —— 常驻的非 passive touchmove 会拖慢整页滚动 */
+    function onDragTouchMove(e) {
+        if (!menuDrag) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        if (e.cancelable) e.preventDefault();
+        updateDragHit(t.clientX, t.clientY);
+    }
+
+    function onDragTouchEnd(e) {
+        if (!menuDrag) return;
+        const t = e.changedTouches && e.changedTouches[0];
+        if (t) updateDragHit(t.clientX, t.clientY);
+        finishMenuDrag(true);
+    }
+
+    const onDragTouchCancel = () => finishMenuDrag(false);
+
+    function attachDragTouch() {
+        window.addEventListener('touchmove', onDragTouchMove, { passive: false, capture: true });
+        window.addEventListener('touchend', onDragTouchEnd, true);
+        window.addEventListener('touchcancel', onDragTouchCancel, true);
+    }
+
+    function detachDragTouch() {
+        window.removeEventListener('touchmove', onDragTouchMove, { capture: true });
+        window.removeEventListener('touchend', onDragTouchEnd, true);
+        window.removeEventListener('touchcancel', onDragTouchCancel, true);
+    }
+
+    window.addEventListener('pointermove', (e) => {
+        if (!menuDrag || e.pointerId !== menuDrag.id) return;
+        updateDragHit(e.clientX, e.clientY);
+    }, true);
+
+    // 松手：落在某项上就执行它，落在空白处就按「点空白」处理，收起菜单
+    function finishMenuDrag(commit) {
+        if (!menuDrag) return;
+        const wasTouch = menuDrag.touch;
+        menuDrag = null;
+        setMenuDragging(false);
+        if (wasTouch) detachDragTouch();
+        const hit = dragHit;
+        dragHit = null;
+        setDragItem(null);
+        if (!commit) return;      // 手势被系统接管，菜单留着，只是不高亮了
+        if (hit && !hit.disabled) hit.click();
+        else if (!hit) closeMenu();   // 落在空白处：跟点空白一个意思
+        // 落在禁用项上：什么都不做，菜单也留着
+        // 这一次 click 仍要由 suppressClick 吞掉（手指可能又拖回卡片上了），
+        // 但得等它派发完再复位，否则拖回按钮上松手会真的把按钮按下去
+        setTimeout(() => { suppressClick = false; }, 0);
+    }
+
+    window.addEventListener('pointerup', () => finishMenuDrag(true), true);
+    // 触屏的 pointercancel 是「浏览器接管了手势」而非「用户松手」：
+    // 这时交给 touch 那条路继续跟，不能在这里把拖动判定掉
+    window.addEventListener('pointercancel', () => {
+        if (menuDrag && !menuDrag.touch) finishMenuDrag(false);
+    }, true);
+
     root.addEventListener('click', (e) => {
         if (!suppressClick) return;
         suppressClick = false;
         e.preventDefault();
         e.stopPropagation();
     }, true);
+
+    /* ---------------- 曲目日历 ----------------
+       行内日期唤出。范围每次打开时按「清单里的日期 + 当前时间」实时算：
+       下界 = 最早一首曲目的月份，上界 = max(最新曲目月份, 当月)。
+       于是曲目只到 2026-10 时就只有 9、10 月，到 11 月自然多出 11 月。
+       有曲目的日子着色；选中某天就把列表滚到当天第一首并短暂高亮 */
+    const WEEK_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
+    const CAL_HIDE_MS = 260;     // 与 .calendar 收起过渡同长
+
+    const calLayer = $('calLayer');
+    const calendarEl = $('calendar');
+    const calGrid = $('calGrid');
+    const calWeekdays = $('calWeekdays');
+    const calTitle = $('calTitle');
+    const calPicker = $('calPicker');
+    const calMonths = $('calMonths');
+    const calYearLabel = $('calYearLabel');
+    const calPrevMonth = $('calPrevMonth');
+    const calNextMonth = $('calNextMonth');
+    const calPrevYear = $('calPrevYear');
+    const calNextYear = $('calNextYear');
+    // playlistCard 复用形态量测段已取好的引用（见 measureMorphHeights 一带）
+
+    let calDates = new Set();      // 有曲目的日期 'YYYYMMDD'
+    let calMonthSet = new Set();   // 有曲目的月份 'YYYYMM'
+    let calMinIdx = 0;             // 可浏览范围（月序号，见 monthIndex），由 computeCalRange 写入
+    let calMaxIdx = 0;
+    let calY = new Date().getFullYear();      // 当前展示的年月
+    let calM = new Date().getMonth() + 1;
+    let calPickY = calY;           // 年 / 月选择层正在浏览的年份
+    let calSelected = '';          // 选中的日期
+    let calAnchor = null;          // 唤出日历的那颗日期按钮（贴靠与动画原点用）
+    let calReturnFocus = null;
+    let calHideTimer = 0;
+    let calLocateTimer = 0;
+
+    // 'YYYYMMDD'；也容忍 'YYYY-MM-DD' / 'YYYY.MM.DD'，取不到给空串
+    function normDate(v) {
+        const s = String(v || '').trim();
+        if (/^\d{8}$/.test(s)) return s;
+        const m = s.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+        return m ? `${m[1]}${m[2].padStart(2, '0')}${m[3].padStart(2, '0')}` : '';
+    }
+
+    const ymd = (y, m, d) => `${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`;
+    const monthKey = (y, m) => `${y}${String(m).padStart(2, '0')}`;
+    const monthIndex = (y, m) => y * 12 + (m - 1);
+
+    /* 可浏览范围：清单里的最早 / 最晚月份，上界再和「当月」取大。
+       每次打开日历都重算一次，所以页面开着跨月、或清单新增了曲目，
+       范围都会自己跟上，不需要手改常量 */
+    function computeCalRange() {
+        const now = new Date();
+        const nowIdx = monthIndex(now.getFullYear(), now.getMonth() + 1);
+        let lo = Infinity, hi = -Infinity;
+        for (const t of playlist) {
+            const d = normDate(t.date);
+            if (!d) continue;
+            const idx = monthIndex(Number(d.slice(0, 4)), Number(d.slice(4, 6)));
+            if (idx < lo) lo = idx;
+            if (idx > hi) hi = idx;
+        }
+        if (!Number.isFinite(lo)) { lo = nowIdx; hi = nowIdx; }   // 清单还没到：只给当月
+        else if (nowIdx > hi) hi = nowIdx;
+        calMinIdx = lo;
+        calMaxIdx = hi;
+    }
+
+    // 清单日期 → 着色用的两个集合（日级 + 月级）
+    function syncCalDates() {
+        calDates = new Set();
+        calMonthSet = new Set();
+        for (const t of playlist) {
+            const d = normDate(t.date);
+            if (!d) continue;
+            calDates.add(d);
+            calMonthSet.add(d.slice(0, 6));
+        }
+        computeCalRange();
+    }
+
+    function renderCalendar() {
+        // 翻月 / 跳月后选中的日子可能已经不在展示的月份里，
+        // 那样方向键会从别月那一格出发、一按就跳回去。统一把选中收进当月
+        if (calSelected.slice(0, 6) !== monthKey(calY, calM)) calSelected = ymd(calY, calM, 1);
+        calTitle.textContent = `${calY}年${calM}月`;
+        const firstDow = new Date(calY, calM - 1, 1).getDay();   // 周日 = 0
+        const frag = document.createDocumentFragment();
+        // 固定 6 行 42 格：翻月时日历高度不跳
+        for (let i = 0; i < 42; i++) {
+            const dt = new Date(calY, calM - 1, 1 - firstDow + i);
+            const y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate();
+            const key = ymd(y, m, d);
+            const outside = m !== calM;         // 补齐格：相邻月，不可点
+            const has = !outside && calDates.has(key);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cal-day';
+            btn.textContent = String(d);
+            btn.dataset.date = key;
+            btn.disabled = outside;
+            if (outside) btn.classList.add('is-out');
+            if (has) btn.classList.add('has-tracks');
+            if (key === calSelected && !outside) {
+                btn.classList.add('is-selected');
+                btn.setAttribute('aria-pressed', 'true');
+            }
+            btn.setAttribute('aria-label', `${y}年${m}月${d}日${has ? '，有曲目' : ''}`);
+            frag.appendChild(btn);
+        }
+        calGrid.replaceChildren(frag);
+        const idx = monthIndex(calY, calM);
+        calPrevMonth.disabled = idx <= calMinIdx;
+        calNextMonth.disabled = idx >= calMaxIdx;
+    }
+
+    /* 年 / 月层只列范围内的月份：曲目只到 10 月、当下也是 10 月，
+       这里就只有 9 月与 10 月两格，不摆一排点不动的灰药丸 */
+    function renderMonthPicker() {
+        const minY = Math.floor(calMinIdx / 12);
+        const maxY = Math.floor(calMaxIdx / 12);
+        calYearLabel.textContent = `${calPickY}年`;
+        calPrevYear.disabled = calPickY <= minY;
+        calNextYear.disabled = calPickY >= maxY;
+        const frag = document.createDocumentFragment();
+        for (let m = 1; m <= 12; m++) {
+            const idx = monthIndex(calPickY, m);
+            if (idx < calMinIdx || idx > calMaxIdx) continue;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cal-month';
+            btn.textContent = `${m}月`;
+            btn.dataset.month = String(m);
+            if (calMonthSet.has(monthKey(calPickY, m))) btn.classList.add('has-tracks');
+            if (calPickY === calY && m === calM) {
+                btn.classList.add('is-current');
+                btn.setAttribute('aria-current', 'true');
+            }
+            btn.setAttribute('aria-label', `${calPickY}年${m}月`);
+            frag.appendChild(btn);
+        }
+        calMonths.replaceChildren(frag);
+    }
+
+    // pick=true 切到年 / 月选择层，false 回日期网格
+    function setCalMode(pick) {
+        // 切换会把原来那颗带焦点的按钮藏起来，浏览器随即把焦点丢回 body，
+        // 而 focusout 会把日历当成「焦点移出」收掉。统一把焦点落到标题上
+        // （两种视图都在，且它本来就是模式开关）
+        const act = document.activeElement;
+        const losing = act && act !== calTitle && calendarEl.contains(act)
+            && (act.closest('.cal-picker') || act.closest('.cal-grid'));
+        calPicker.hidden = !pick;
+        calGrid.hidden = pick;
+        calWeekdays.hidden = pick;
+        // 年 / 月层自带年份步进，月份箭头在这里只会让人以为「改的是选择层的月份」
+        calPrevMonth.hidden = pick;
+        calNextMonth.hidden = pick;
+        calendarEl.classList.toggle('is-picking', pick);
+        calTitle.setAttribute('aria-expanded', pick ? 'true' : 'false');
+        if (pick) {
+            calPickY = calY;
+            renderMonthPicker();
+        } else {
+            renderCalendar();
+        }
+        if (losing) calTitle.focus({ preventScroll: true });
+        placeCalendar(calAnchor);      // 两种形态高度不同，重新贴一次
+    }
+
+    // 翻月 / 翻年撞到边界时，刚点的那颗箭头会被置 disabled，浏览器随即把焦点
+    // 从禁用按钮上摘掉丢回 body，于是「焦点移出即收起」的监听把日历收掉了
+    // （用户现象：点一下切月，日历直接消失）。
+    // 坑：置 disabled 的那一下**不会**同步摘焦点，浏览器要等本次 click 处理完
+    // 才 blur，所以此刻 activeElement 仍是那颗按钮、看不出「要出事」——判据只能
+    // 看按钮还不可用，不能看焦点在哪
+    function keepCalFocus(fallbackEl) {
+        const target = (fallbackEl && !fallbackEl.disabled) ? fallbackEl : calTitle;
+        target.focus({ preventScroll: true });
+    }
+
+    function stepMonth(delta) {
+        const idx = clamp(monthIndex(calY, calM) + delta, calMinIdx, calMaxIdx);
+        calY = Math.floor(idx / 12);
+        calM = (idx % 12) + 1;
+        renderCalendar();
+        keepCalFocus(delta > 0 ? calNextMonth : calPrevMonth);
+        placeCalendar(calAnchor);
+    }
+
+    function stepYear(delta) {
+        calPickY = clamp(calPickY + delta, Math.floor(calMinIdx / 12), Math.floor(calMaxIdx / 12));
+        renderMonthPicker();
+        keepCalFocus(delta > 0 ? calNextYear : calPrevYear);
+        placeCalendar(calAnchor);
+    }
+
+    // 按天数挪一格（方向键用），越界返回空串
+    function shiftCalDate(key, days) {
+        const dt = new Date(Number(key.slice(0, 4)), Number(key.slice(4, 6)) - 1, Number(key.slice(6, 8)) + days);
+        const idx = monthIndex(dt.getFullYear(), dt.getMonth() + 1);
+        if (idx < calMinIdx || idx > calMaxIdx) return '';
+        return ymd(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+    }
+
+    function selectCalDate(key, opts) {
+        const o = opts || {};
+        // 渲染会整格替换，原按钮连同焦点一起消失。焦点若本来就在格子里
+        // （鼠标点 / 方向键挪），必须先记下来，稍后落到同一格的新按钮上，
+        // 否则键盘就没法接着挪了
+        const hadFocus = o.focus || calGrid.contains(document.activeElement);
+        calSelected = key;
+        const ky = Number(key.slice(0, 4)), km = Number(key.slice(4, 6));
+        if (ky !== calY || km !== calM) { calY = ky; calM = km; }
+        renderCalendar();
+        if (hadFocus) {
+            const cell = calGrid.querySelector(`[data-date="${key}"]`);
+            if (cell) cell.focus({ preventScroll: true });
+        }
+        if (o.keepOpen) return;                       // 键盘挪格子：只改选中，不收起
+        const i = playlist.findIndex((t) => normDate(t.date) === key);
+        if (i < 0) return;                            // 当天没有曲目：只选中，日历留着接着挑
+        closeCalendar();
+        locateTrack(i);
+    }
+
+    // 把某一行滚到视野中央并短暂高亮；列表收着就先展开，等形变结束再滚
+    function locateTrack(i) {
+        const run = () => {
+            const row = playlistList.querySelectorAll('.track-row')[i];
+            if (!row) return;
+            row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            row.classList.remove('is-located');
+            void row.offsetWidth;                     // 重启动画
+            row.classList.add('is-located');
+            clearTimeout(calLocateTimer);
+            calLocateTimer = setTimeout(() => row.classList.remove('is-located'), 1800);
+        };
+        if (isPlaylistOpen()) run();
+        else { setPlaylistOpen(true); setTimeout(run, 680); }
+    }
+
+    /* 贴靠：优先像菜单一样贴在播放列表卡片上方，上方放不下就落到下方，
+       再按 8px 安全边距夹进视口；原点朝着被点的那个日期。
+       贴靠位置只在「打开时」定一次 —— 那一刻显示的是较高的日期网格（最坏情况），
+       之后切年 / 月层只让面板高度变化、锚定的那条边不动。
+       否则从 6 行网格换成矮月份层时高度差三百多像素，面板会整块「飞」到另一个位置 */
+    let calAnchorEdge = 'top';     // 锚定哪条边：'bottom' 固定底边（向上展开）/ 'top' 固定顶边
+    let calAnchorY = 0;            // 那条边的视口 y
+    let calPlaced = false;         // 本次打开是否已经定过位
+
+    function placeCalendar(anchorEl) {
+        const gap = 8;
+        const w = calendarEl.offsetWidth;
+        const h = calendarEl.offsetHeight;
+        const cardRect = playlistCard.getBoundingClientRect();
+        const left = clamp(cardRect.left + (cardRect.width - w) / 2, gap,
+            Math.max(gap, window.innerWidth - w - gap));
+        if (!calPlaced) {
+            if (cardRect.top - gap - h >= gap) {
+                calAnchorEdge = 'bottom';                    // 上方放得下：底边贴卡片顶
+                calAnchorY = cardRect.top - gap;
+            } else {
+                calAnchorEdge = 'top';                       // 落到下方并夹进视口
+                calAnchorY = clamp(cardRect.bottom + gap, gap,
+                    Math.max(gap, window.innerHeight - h - gap));
+            }
+            calPlaced = true;
+        }
+        const top = calAnchorEdge === 'bottom' ? calAnchorY - h : calAnchorY;
+        calendarEl.style.left = `${left}px`;
+        calendarEl.style.top = `${top}px`;
+        const a = (anchorEl && anchorEl.isConnected ? anchorEl : playlistCard).getBoundingClientRect();
+        calendarEl.style.setProperty('--cal-origin',
+            `${clamp(a.left + a.width / 2 - left, 0, w)}px ${clamp(a.top + a.height / 2 - top, 0, h)}px`);
+    }
+
+    function openCalendar(dateKey, anchorEl) {
+        closeMenu();                       // 两个浮层不同时开
+        clearTimeout(calHideTimer);
+        calHideTimer = 0;
+        if (calLayer.hidden) {
+            calReturnFocus = anchorEl || document.activeElement;
+            calLayer.hidden = false;
+        }
+        calAnchor = anchorEl || null;
+        // 每次打开都按最新清单与当前时间重算范围（页面开着跨月也会跟上）
+        syncCalDates();
+        const d = normDate(dateKey);
+        if (/^\d{8}$/.test(d)) {
+            calSelected = d;
+            calY = Number(d.slice(0, 4));
+            calM = Number(d.slice(4, 6));
+        }
+        const idx = clamp(monthIndex(calY, calM), calMinIdx, calMaxIdx);
+        calY = Math.floor(idx / 12);
+        calM = (idx % 12) + 1;
+        calPlaced = false;                 // 每次打开重新定贴靠（卡片位置 / 视口都可能变过）
+        setCalMode(false);                 // 已开着则只重渲染，不重播入场动画
+        placeCalendar(calAnchor);
+        void calendarEl.offsetWidth;
+        calendarEl.classList.add('is-open');
+        calendarEl.focus({ preventScroll: true });
+    }
+
+    function closeCalendar() {
+        if (calLayer.hidden) return;
+        calendarEl.classList.remove('is-open');
+        clearTimeout(calHideTimer);
+        calHideTimer = setTimeout(() => {
+            calHideTimer = 0;
+            calLayer.hidden = true;
+        }, CAL_HIDE_MS);
+        const back = calReturnFocus;
+        calReturnFocus = null;
+        if (back instanceof HTMLElement && back !== document.body && document.contains(back)) {
+            back.focus({ preventScroll: true });
+        }
+    }
+
+    calWeekdays.replaceChildren(...WEEK_NAMES.map((w) => {
+        const el = document.createElement('span');
+        el.className = 'cal-weekday';
+        el.textContent = w;
+        return el;
+    }));
+
+    calGrid.addEventListener('click', (e) => {
+        const cell = e.target.closest('.cal-day');
+        if (!cell || cell.disabled) return;
+        selectCalDate(cell.dataset.date);
+    });
+
+    calMonths.addEventListener('click', (e) => {
+        const cell = e.target.closest('.cal-month');
+        if (!cell || cell.disabled) return;
+        calY = calPickY;
+        calM = Number(cell.dataset.month);
+        setCalMode(false);
+    });
+
+    calTitle.addEventListener('click', () => setCalMode(calPicker.hidden));
+    calPrevMonth.addEventListener('click', () => stepMonth(-1));
+    calNextMonth.addEventListener('click', () => stepMonth(1));
+    calPrevYear.addEventListener('click', () => stepYear(-1));
+    calNextYear.addEventListener('click', () => stepYear(1));
+    [calPrevMonth, calNextMonth, calPrevYear, calNextYear].forEach(attachRipple);
+
+    // 日期网格里的方向键挪格子（Esc 收起，Tab 移出即收起由 focusout 负责）
+    calendarEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closeCalendar(); return; }
+        if (!calPicker.hidden || !calSelected) return;      // 选择层不接管方向键
+        const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+        if (step === undefined) return;
+        e.preventDefault();
+        const next = shiftCalDate(calSelected, step);
+        if (next) selectCalDate(next, { keepOpen: true, focus: true });
+    });
+
+    // 点日历外的空白收起；焦点移出（Tab 走出去）也收起
+    calLayer.addEventListener('pointerdown', (e) => {
+        if (e.target === calLayer) { e.preventDefault(); closeCalendar(); }
+    });
+    // 焦点移出即收起。必须等下一帧再判：切年 / 月层、重渲染日期格都会让
+    // 焦点先掉回 body（此刻的 relatedTarget 是 null），同一帧里我们已经把
+    // 焦点挪回日历内，隔一帧看就还是「没出去」，不该误收
+    calendarEl.addEventListener('focusout', () => {
+        requestAnimationFrame(() => {
+            if (calLayer.hidden) return;
+            const a = document.activeElement;
+            if (a && calendarEl.contains(a)) return;
+            closeCalendar();
+        });
+    });
+
+    syncCalDates();      // 先算出范围（此时清单还没到，范围暂时只看当月）
+    renderCalendar();
 
     /* ---------------- 启动 ---------------- */
     loadPrefs();
