@@ -107,6 +107,19 @@
 /* ---------- 基础 ---------- */
 * { box-sizing: border-box; }
 
+/* 全站文本不可选中：user-select 会继承，写在 html 上即可覆盖所有后代。
+   -webkit-touch-callout 压掉 iOS 长按弹出的「拷贝 / 存储图像」 */
+html {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* 图片不允许拖拽（拖到桌面/文件夹 = 另存为），
+   与 HTML 上的 draggable="false" 互为兜底 */
+img { -webkit-user-drag: none; }
+
 html, body { margin: 0; padding: 0; }
 
 body {

@@ -1627,6 +1627,14 @@
     // 页面或列表一滚动菜单就脱离锚点，直接收起（capture 才能听到列表内部滚动）
     window.addEventListener('scroll', () => closeMenu(), true);
 
+    /* 封死原生右键菜单：里面藏着「音频另存为 / 复制音频地址」，是抓取 mp3 最省事的入口。
+       只压默认行为，不拦事件 —— 卡片自己的 contextmenu 监听在冒泡更早的一层，
+       仍会正常唤出上面的自定义菜单（与本项目其他页面 FB/TTT 的做法一致） */
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    /* 拖出去即另存为：封面、音频、链接一律禁止起拖 */
+    document.addEventListener('dragstart', (e) => e.preventDefault());
+
     // 桌面右键
     root.addEventListener('contextmenu', (e) => {
         e.preventDefault();
