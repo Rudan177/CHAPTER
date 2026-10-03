@@ -54,6 +54,8 @@
     const sliderFill = $('sliderFill');
     const sliderBuffered = $('sliderBuffered');
     const sliderThumb = $('sliderThumb');
+    const sliderBubble = $('sliderBubble');
+    const sliderBubbleTime = $('sliderBubbleTime');
     const timeCurrent = $('timeCurrent');
     const timeDuration = $('timeDuration');
     const songTitle = $('songTitle');
@@ -81,6 +83,10 @@
     const btnMiniPlay = $('btnMiniPlay');
     const btnMiniPrev = $('btnMiniPrev');
     const btnMiniNext = $('btnMiniNext');
+    const menuLayer = $('menuLayer');
+    const playerMenu = $('playerMenu');
+    const menuDownloadCover = $('menuDownloadCover');
+    const menuDownloadLyrics = $('menuDownloadLyrics');
 
     /* ---------------- 状态 ---------------- */
     let duration = 0;
@@ -95,6 +101,13 @@
     let wantPlaying = false;     // 用户意图播放态（换曲时用它决定是否续播）
     const darkMql = window.matchMedia('(prefers-color-scheme: dark)');
     const reduceMotionMql = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    /* 右键菜单的三个显示开关；默认歌词关、播放列表与上下曲开 */
+    const prefs = { lyrics: false, playlist: true, trackNav: true };
+    let lyrics = [];     // 当前曲目的歌词行 [{ t: 秒, text }]，按时间升序
+    let lyricRaw = '';   // 当前曲目 USLT 的 LRC 原文，供「下载歌词」去时间戳导出
+    let lyricIdx = -1;   // 已显示的歌词行下标；-1 = 还没到第一句（回落歌手名）
+    let lyricLine = null;   // 当前该显示的歌词；null 表示回落歌手名
 
     /* ---------------- 工具 ---------------- */
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -160,6 +173,9 @@
 
     /* ---------------- 进度渲染（仅写 transform，走合成器） ---------------- */
     let trackWidth = 0;
+    let hoverRatio = null;        // 悬停时指针所在的轨道比例；指针离开后置空
+    const THUMB_HOT_PX = 14;      // 「碰到手柄」的判定半径（px）
+    let thumbHotLatched = false;  // 松手后先回到细态，指针离开手柄再靠近才重新变宽
 
     function measureTrack() {
         trackWidth = sliderTrack.clientWidth;
@@ -177,6 +193,10 @@
         slider.setAttribute('aria-valuemax', String(max));
         slider.setAttribute('aria-valuenow', String(now));
         slider.setAttribute('aria-valuetext', `${fmtTime(current)}，共 ${isFiniteDuration() ? fmtTime(duration) : '--:--'}`);
+        // 播放推进会让手柄从指针底下滑走，悬停期间同步复检一次「是否还碰着手柄」
+        if (hoverRatio !== null) updateThumbHot(hoverRatio);
+        // 歌词跟着进度走：这里同时覆盖播放逐帧、暂停时的 timeupdate、拖动预览与跳转
+        updateLyric(current);
     }
 
     function renderBuffered() {
@@ -187,6 +207,41 @@
             if (b.end(i) > end) end = b.end(i);
         }
         sliderBuffered.style.transform = `scaleX(${clamp(end / duration, 0, 1)})`;
+    }
+
+    /* 时间气泡：ratio 是 0~1 的轨道比例，两端贴边避免气泡滑出卡片；
+       拖动中直接由 CSS 取消位置过渡，所以这里逐帧写入即可跟手 */
+    function renderBubble(time, ratio) {
+        if (trackWidth <= 0) return;
+        const x = clamp(ratio, 0, 1) * trackWidth;
+        const bw = sliderBubble.offsetWidth;
+        const cx = bw > 0 && trackWidth > bw ? clamp(x, bw / 2, trackWidth - bw / 2) : x;
+        sliderBubble.style.setProperty('--bx', `${cx.toFixed(1)}px`);
+        sliderBubbleTime.textContent = fmtTime(time);
+    }
+
+    function hideBubble() {
+        slider.classList.remove('is-hovering');
+    }
+
+    /* 手柄变宽只由「真的碰到手柄」触发：按指针与手柄中心的横向距离判定，
+       而不是整条 48px 高的滑条区域都算命中 */
+    function setThumbHot(on) {
+        slider.classList.toggle('is-thumb-hot', on);
+    }
+
+    function updateThumbHot(ratio) {
+        if (isDragging) return;
+        if (!trackWidth || !isFiniteDuration() || duration <= 0) { setThumbHot(false); return; }
+        const cur = clamp(audio.currentTime / duration, 0, 1);
+        const near = Math.abs(ratio - cur) * trackWidth <= THUMB_HOT_PX;
+        if (thumbHotLatched) {
+            // 刚松手时指针恰好压在手柄上，先保持细态，等指针离开后再靠近才点亮
+            if (!near) thumbHotLatched = false;
+            setThumbHot(false);
+            return;
+        }
+        setThumbHot(near);
     }
 
     function startLoop() {
@@ -214,21 +269,52 @@
 
     let seekPreview = 0;
 
+    slider.addEventListener('pointerenter', (e) => {
+        if (!isFiniteDuration()) return;
+        const r = posFromEvent(e);
+        hoverRatio = r;
+        slider.classList.add('is-hovering');
+        renderBubble(r * duration, r);
+        updateThumbHot(r);
+    });
+
     slider.addEventListener('pointerdown', (e) => {
         if (!isFiniteDuration()) return;
         e.preventDefault();
         measureTrack();
         isDragging = true;
-        seekPreview = posFromEvent(e) * duration;
+        thumbHotLatched = false;
+        setThumbHot(false);          // 抬起后由 is-dragging 接管变宽
+        hoverRatio = posFromEvent(e);
+        seekPreview = hoverRatio * duration;
         slider.classList.add('is-dragging');
         slider.setPointerCapture(e.pointerId);
         renderProgress(seekPreview);
+        renderBubble(seekPreview, duration > 0 ? seekPreview / duration : 0);
     });
 
     slider.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        seekPreview = posFromEvent(e) * duration;
-        renderProgress(seekPreview);
+        if (isDragging) {
+            hoverRatio = posFromEvent(e);
+            seekPreview = hoverRatio * duration;
+            renderProgress(seekPreview);
+            renderBubble(seekPreview, duration > 0 ? seekPreview / duration : 0);
+            return;
+        }
+        // 悬停预览：气泡跟随指针，显示该位置对应的时间
+        if (!isFiniteDuration()) return;
+        const r = posFromEvent(e);
+        hoverRatio = r;
+        slider.classList.add('is-hovering');
+        renderBubble(r * duration, r);
+        updateThumbHot(r);
+    });
+
+    slider.addEventListener('pointerleave', () => {
+        hoverRatio = null;
+        thumbHotLatched = false;
+        setThumbHot(false);
+        hideBubble();
     });
 
     function endDrag(e) {
@@ -240,6 +326,14 @@
             try { audio.currentTime = seekPreview; } catch (_) { /* 非法时刻忽略 */ }
         }
         renderProgress(audio.currentTime);
+        // 松手后手柄正好停在指针下：先保持细态，指针离开手柄再靠近才重新变宽
+        setThumbHot(false);
+        thumbHotLatched = true;
+        // 鼠标松手后指针往往还在轨道上（此时不会有 leave 事件），
+        // 把气泡交还给悬停预览；触屏的 leave 会紧随其后把它收起
+        if (slider.classList.contains('is-hovering') && duration > 0) {
+            renderBubble(audio.currentTime, audio.currentTime / duration);
+        }
     }
     slider.addEventListener('pointerup', endDrag);
     slider.addEventListener('pointercancel', endDrag);
@@ -272,6 +366,7 @@
         });
         root.classList.toggle('is-playing-root', playing);
         if (playing) startLoop(); else stopLoop();
+        applyArtistText();          // 暂停回落歌手名、继续播放回到当前歌词句
         updateCurrentTrack(false);
     }
 
@@ -321,6 +416,8 @@
         duration = 0;
         timeDuration.textContent = '--:--';
         sliderBuffered.style.transform = 'scaleX(0)';
+        hideBubble();
+        resetLyric();                       // 先清掉上一首的歌词，避免串行
         renderProgress(0);
 
         applyMeta({ title: t.name, artist: t.artist });
@@ -346,10 +443,13 @@
 
     btnPlay.addEventListener('click', togglePlay);
     btnMiniPlay.addEventListener('click', togglePlay);
-    btnPrev.addEventListener('click', prevTrack);
-    btnNext.addEventListener('click', nextTrack);
-    btnMiniPrev.addEventListener('click', prevTrack);
-    btnMiniNext.addEventListener('click', nextTrack);
+    // 左侧 / 右侧按钮的语义由「显示上下曲」决定：开 = 上下曲，关 = 进退 10 秒
+    const onSkipBack = () => { if (prefs.trackNav) prevTrack(); else seekBy(-SEEK_STEP); };
+    const onSkipFwd = () => { if (prefs.trackNav) nextTrack(); else seekBy(SEEK_STEP); };
+    btnPrev.addEventListener('click', onSkipBack);
+    btnMiniPrev.addEventListener('click', onSkipBack);
+    btnNext.addEventListener('click', onSkipFwd);
+    btnMiniNext.addEventListener('click', onSkipFwd);
 
     // 全局快捷键（焦点在控件上时由控件自己处理）
     window.addEventListener('keydown', (e) => {
@@ -357,9 +457,12 @@
         const t = e.target;
         if (t instanceof Element && t.closest('button, [role="slider"], input, textarea, select')) return;
         if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); togglePlay(); }
-        else if (e.key === 'ArrowLeft') { e.preventDefault(); prevTrack(); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); nextTrack(); }
-        else if (e.key === 'Escape' && isPlaylistOpen()) { e.preventDefault(); setPlaylistOpen(false); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); onSkipBack(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); onSkipFwd(); }
+        else if (e.key === 'Escape') {
+            if (!menuLayer.hidden) { e.preventDefault(); closeMenu(); }
+            else if (isPlaylistOpen()) { e.preventDefault(); setPlaylistOpen(false); }
+        }
     });
 
     /* ---------------- 音频事件 ---------------- */
@@ -426,7 +529,7 @@
     function showError(on) {
         errorLayer.hidden = !on;
         document.querySelector('.player-stack').inert = on;
-        if (on) { btnRetry.focus(); return; }
+        if (on) { closeMenu(); btnRetry.focus(); return; }
         // 收起时若焦点还在浮层里的重试按钮上，交还给播放按钮
         if (document.activeElement === btnRetry) btnPlay.focus();
     }
@@ -559,11 +662,20 @@
         currentMeta = meta;
         // 标题：文字写入内层 span（跑马灯载体），切换动画作用于外层 h1，避免 transform 冲突
         swapText(songTitleText, meta.title, songTitle);
-        swapText(songArtist, meta.artist);
         miniTitle.textContent = meta.title;
-        miniArtist.textContent = meta.artist;
         updateTitleMarquee();
         document.title = `${meta.title} · ${meta.artist} — 音乐播放器`;
+        applyArtistText();
+    }
+
+    // 歌手位置：正在播放且开着歌词、且已有当前句时显示歌词，否则回落歌手名。
+    // 暂停时也回落歌手名（歌词只在唱的时候跟着走）。
+    // 迷你胶囊的歌手位置同步（两处都是「artist 的位置」）
+    function applyArtistText() {
+        const showLyric = prefs.lyrics && !audio.paused && lyricLine !== null;
+        const text = showLyric ? lyricLine : currentMeta.artist;
+        swapText(songArtist, text);
+        swapText(miniArtist, text);
     }
 
     // 双层封面交叉淡入：离屏解码成功后再切层，避免闪现半解码帧。
@@ -647,10 +759,9 @@
     /* ---------------- ID3v2 解析（流式读取，取封面 / 兜底信息） ---------------- */
     function syncsafe(b) { return ((b[0] & 0x7f) << 21) | ((b[1] & 0x7f) << 14) | ((b[2] & 0x7f) << 7) | (b[3] & 0x7f); }
 
-    function decodeTextFrame(bytes) {
-        if (!bytes.length) return '';
-        const enc = bytes[0];
-        const body = bytes.subarray(1);
+    // ID3 文本帧 / USLT 共用的解码：enc 是编码字节，body 是其余正文
+    function decodeString(enc, body) {
+        if (!body.length) return '';
         try {
             if (enc === 1 || enc === 2) {
                 // enc 1: UTF-16 带 BOM；enc 2: UTF-16BE 无 BOM
@@ -668,6 +779,26 @@
             const text = new TextDecoder(enc === 3 ? 'utf-8' : 'latin1').decode(body);
             return text.replace(/\0+$/g, '').replace(/\0/g, ' ').trim();
         } catch (_) { return ''; }
+    }
+
+    function decodeTextFrame(bytes) {
+        return bytes.length ? decodeString(bytes[0], bytes.subarray(1)) : '';
+    }
+
+    /* USLT 帧布局：<编码> <3 字节语言码> <描述\0> <歌词正文>。
+       正文是 LRC 文本；描述按同一编码以 \0 结束（UTF-16 是 00 00），先跳过去再解码 */
+    function parseUslt(body) {
+        if (body.length < 5) return '';
+        const enc = body[0];
+        let p = 4;                                  // 跳过编码字节 + 3 字节语言码
+        if (enc === 1 || enc === 2) {
+            while (p + 1 < body.length && !(body[p] === 0 && body[p + 1] === 0)) p += 2;
+            p += 2;
+        } else {
+            const z = body.indexOf(0, p);
+            p = z === -1 ? body.length : z + 1;
+        }
+        return p < body.length ? decodeString(enc, body.subarray(p)) : '';
     }
 
     function parseId3(u8) {
@@ -691,6 +822,7 @@
             if (id === 'TIT2') out.title = decodeTextFrame(body);
             else if (id === 'TPE1') out.artist = decodeTextFrame(body);
             else if (id === 'TALB') out.album = decodeTextFrame(body);
+            else if (id === 'USLT' && !out.lyrics) out.lyrics = parseUslt(body);
             else if (id === 'APIC' && !out.picture) {
                 // v2.3/2.4 布局：<enc> <mime\0> <图片类型> <描述\0> <数据>
                 const enc = body[0];
@@ -785,6 +917,12 @@
                 applyMeta({ title, artist });
                 updateTrackRowText(currentIndex);
             }
+            // 歌词来自 mp3 内嵌的 USLT 帧（LRC 文本），不额外发请求
+            lyricRaw = info.lyrics || '';
+            lyrics = parseLrc(lyricRaw);
+            lyricIdx = -1;
+            lyricLine = null;
+            updateLyric(audio.currentTime);   // 标签可能晚于起播才到达，立刻对齐到当前句
             setupMediaSession(coverObjectUrl);
 
             if (info.picture && 'Blob' in window) {
@@ -802,6 +940,63 @@
             // 解析失败不影响播放，保留清单元数据
             console.info('歌曲信息解析跳过：', err && err.message);
         }
+    }
+
+    /* ---------------- 歌词（LRC） ---------------- */
+    // 时间标签：[mm:ss]、[mm:ss.xx]、[mm:ss.xxx]，小数分隔符也接受 ":"
+    const LRC_TIME = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+
+    // LRC 文本 → [{ t: 秒, text }]，按时间升序；[ti:] 这类元数据行没有时间标签，自然被滤掉
+    function parseLrc(raw) {
+        if (!raw) return [];
+        const rows = [];
+        const off = raw.match(/\[offset:\s*([+-]?\d+)\s*\]/i);
+        const offset = off ? Number(off[1]) / 1000 : 0;
+        for (const line of raw.split(/\r?\n/)) {
+            LRC_TIME.lastIndex = 0;
+            const times = [];
+            let end = 0;             // 最后一个时间标签结束的位置（exec 失败会把 lastIndex 归零）
+            let m;
+            while ((m = LRC_TIME.exec(line))) {
+                end = LRC_TIME.lastIndex;
+                // 两位小数 = 百分秒，三位 = 毫秒，统一按小数位读
+                times.push(Number(m[1]) * 60 + Number(m[2]) + (m[3] ? Number(`0.${m[3]}`) : 0) - offset);
+            }
+            if (!times.length) continue;
+            const text = line.slice(end).trim();
+            if (!text) continue;                            // 间奏的空行不占位
+            for (const t of times) rows.push({ t, text });  // 一句可以挂多个时间标签
+        }
+        return rows.sort((a, b) => a.t - b.t);
+    }
+
+    function resetLyric() {
+        lyrics = [];
+        lyricRaw = '';
+        lyricIdx = -1;
+        lyricLine = null;
+    }
+
+    // 二分找当前该显示的行；-1 = 还没到第一句
+    function lyricIndexAt(t) {
+        let lo = 0;
+        let hi = lyrics.length - 1;
+        let idx = -1;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (lyrics[mid].t <= t) { idx = mid; lo = mid + 1; } else hi = mid - 1;
+        }
+        return idx;
+    }
+
+    // 由 renderProgress 逐帧调用：只有行号真的变了才写 DOM
+    function updateLyric(t) {
+        if (!prefs.lyrics || !lyrics.length) return;
+        const idx = lyricIndexAt(t);
+        if (idx === lyricIdx) return;
+        lyricIdx = idx;
+        lyricLine = idx >= 0 ? lyrics[idx].text : null;
+        applyArtistText();
     }
 
     /* ---------------- 从封面提取主题色（M3 动态色） ---------------- */
@@ -1220,10 +1415,273 @@
     btnPlaylist.addEventListener('click', () => setPlaylistOpen(!isPlaylistOpen()));
     btnMiniOpen.addEventListener('click', () => setPlaylistOpen(false));
 
+    /* ---------------- 显示开关（右键菜单三项 + 持久化） ---------------- */
+    const PREFS_KEY = 'player.prefs.v1';
+
+    function loadPrefs() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+            for (const k of Object.keys(prefs)) {
+                if (typeof raw[k] === 'boolean') prefs[k] = raw[k];
+            }
+        } catch (_) { /* 隐私模式 / 数据损坏：沿用默认值 */ }
+    }
+
+    function savePrefs() {
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (_) { /* 忽略 */ }
+    }
+
+    function setLyrics(on) {
+        prefs.lyrics = !!on;
+        savePrefs();
+        lyricIdx = -1;
+        lyricLine = null;
+        updateLyric(audio.currentTime);   // 打开时立刻对齐到当前句
+        applyArtistText();                // 关闭时（或还没唱到第一句）回落歌手名
+        syncMenu();
+    }
+
+    function applyPlaylistVisible() {
+        document.body.classList.toggle('no-playlist', !prefs.playlist);
+        // 列表不可见时不能停在「已展开」形态：那会把播放器收成胶囊却没有列表
+        if (!prefs.playlist) setPlaylistOpen(false);
+    }
+
+    function setPlaylistVisible(on) {
+        prefs.playlist = !!on;
+        savePrefs();
+        applyPlaylistVisible();
+        syncMenu();
+    }
+
+    // 开 = 上一曲 / 下一曲，关 = 快退 / 快进 10 秒；图标与无障碍名称一起换
+    function applyTrackNav() {
+        const on = prefs.trackNav;
+        document.body.classList.toggle('seek-mode', !on);
+        [btnPrev, btnMiniPrev].forEach((b) => b.setAttribute('aria-label', on ? '上一曲' : '快退 10 秒'));
+        [btnNext, btnMiniNext].forEach((b) => b.setAttribute('aria-label', on ? '下一曲' : '快进 10 秒'));
+    }
+
+    function setTrackNav(on) {
+        prefs.trackNav = !!on;
+        savePrefs();
+        applyTrackNav();
+        syncMenu();
+    }
+
+    /* ---------------- 下载（封面 / 歌词） ---------------- */
+    const MIME_EXT = {
+        'image/jpeg': 'jpg', 'image/pjpeg': 'jpg', 'image/jpg': 'jpg',
+        'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/bmp': 'bmp',
+    };
+
+    // 文件名里的路径分隔符等在部分平台会被拒绝，统一换成下划线
+    function safeFileName(name) {
+        return (name || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim() || 'untitled';
+    }
+
+    function downloadBlob(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // 等下载真正启动再撤销，否则部分浏览器会中途取消
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    function downloadCover() {
+        if (!coverObjectUrl) return;
+        fetch(coverObjectUrl)
+            .then((res) => res.blob())
+            .then((blob) => {
+                const ext = MIME_EXT[(coverMime || blob.type || '').toLowerCase()] || 'jpg';
+                downloadBlob(blob, `${safeFileName(currentMeta.title)} - ${safeFileName(currentMeta.artist)}.${ext}`);
+            })
+            .catch((err) => console.info('封面下载跳过：', err && err.message));
+    }
+
+    /* 导出纯文本歌词：剥掉所有时间标签，顺带滤掉 [ti:] / [ar:] / [offset:] 这类元数据行与空行 */
+    function lyricPlainText() {
+        if (!lyricRaw) return '';
+        const rows = [];
+        for (const line of lyricRaw.split(/\r?\n/)) {
+            LRC_TIME.lastIndex = 0;      // 与 parseLrc 共用同一个正则，先归零再 replace
+            const text = line.replace(LRC_TIME, '').trim();
+            if (!text || /^\[[a-zA-Z#]+:/.test(text)) continue;
+            rows.push(text);
+        }
+        return rows.join('\n');
+    }
+
+    function downloadLyrics() {
+        const text = lyricPlainText();
+        if (!text) return;
+        downloadBlob(new Blob([text], { type: 'text/plain;charset=utf-8' }),
+            `${safeFileName(currentMeta.title)} - ${safeFileName(currentMeta.artist)}.txt`);
+    }
+
+    /* ---------------- 右键菜单 ---------------- */
+    const menuItems = [...playerMenu.querySelectorAll('.menu-item')];
+    const PREF_APPLY = { lyrics: setLyrics, playlist: setPlaylistVisible, trackNav: setTrackNav };
+    const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics };
+    const MENU_HIDE_MS = 260;     // 与 .menu 收起过渡同长，收起动画走完再真正隐藏
+    let menuHideTimer = 0;
+    let menuReturnFocus = null;
+
+    // 可聚焦项：跳掉不可用的下载项，方向键循环才不会卡在一个点不动的按钮上
+    const enabledItems = () => menuItems.filter((el) => !el.disabled);
+
+    function syncMenu() {
+        for (const item of menuItems) {
+            const key = item.dataset.pref;
+            if (key) item.setAttribute('aria-checked', prefs[key] ? 'true' : 'false');
+        }
+        // 当前曲目没有内嵌封面 / 歌词时，对应下载项不可用
+        menuDownloadCover.disabled = !coverObjectUrl;
+        menuDownloadLyrics.disabled = !lyricRaw;
+    }
+
+    /* 菜单贴指针展开：先按 8px 安全边距夹进视口，
+       再把 --menu-origin 设到指针所在的那一角，缩放就从指针长出来 */
+    function placeMenu(x, y) {
+        const gap = 8;
+        const w = playerMenu.offsetWidth;
+        const h = playerMenu.offsetHeight;
+        const left = clamp(x, gap, Math.max(gap, window.innerWidth - w - gap));
+        const top = clamp(y, gap, Math.max(gap, window.innerHeight - h - gap));
+        playerMenu.style.left = `${left}px`;
+        playerMenu.style.top = `${top}px`;
+        playerMenu.style.setProperty('--menu-origin',
+            `${clamp(x - left, 0, w)}px ${clamp(y - top, 0, h)}px`);
+    }
+
+    function openMenu(x, y) {
+        // 已经开着：只挪位置，不重播入场动画
+        if (!menuLayer.hidden && playerMenu.classList.contains('is-open')) { placeMenu(x, y); return; }
+        clearTimeout(menuHideTimer);
+        menuHideTimer = 0;
+        if (menuLayer.hidden) {
+            menuReturnFocus = document.activeElement;
+            menuLayer.hidden = false;
+        }
+        syncMenu();
+        placeMenu(x, y);
+        void playerMenu.offsetWidth;     // 先落位、提交样式，再开启过渡
+        playerMenu.classList.add('is-open');
+        const list = enabledItems();
+        if (list.length) list[0].focus({ preventScroll: true });
+    }
+
+    function closeMenu() {
+        if (menuLayer.hidden) return;
+        playerMenu.classList.remove('is-open');
+        clearTimeout(menuHideTimer);
+        menuHideTimer = setTimeout(() => {
+            menuHideTimer = 0;
+            menuLayer.hidden = true;
+        }, MENU_HIDE_MS);
+        const back = menuReturnFocus;
+        menuReturnFocus = null;
+        if (back instanceof HTMLElement && back !== document.body && document.contains(back)) {
+            back.focus({ preventScroll: true });
+        }
+    }
+
+    menuItems.forEach((item) => {
+        item.addEventListener('click', () => {
+            const apply = PREF_APPLY[item.dataset.pref];
+            // 勾选项点了不关菜单，方便连着调（MD3 勾选菜单行为）
+            if (apply) { apply(!prefs[item.dataset.pref]); return; }
+            // 下载是一次性动作，做完自动收起菜单
+            const act = MENU_ACTION[item.dataset.act];
+            if (act) { act(); closeMenu(); }
+        });
+    });
+
+    // 点菜单外的空白关闭；这一层是透明的，只负责接住那一下
+    menuLayer.addEventListener('pointerdown', (e) => {
+        if (e.target === menuLayer) { e.preventDefault(); closeMenu(); }
+    });
+
+    // 菜单内键盘：方向键循环聚焦（跳过不可用项），Home/End 到首尾，Esc 关闭，Tab 走出即收起
+    playerMenu.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closeMenu(); return; }
+        if (e.key === 'Tab') { closeMenu(); return; }
+        const list = enabledItems();
+        if (!list.length) return;
+        if (e.key === 'Home') { e.preventDefault(); list[0].focus(); return; }
+        if (e.key === 'End') { e.preventDefault(); list[list.length - 1].focus(); return; }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const i = list.indexOf(document.activeElement);
+        const d = e.key === 'ArrowDown' ? 1 : -1;
+        const base = i < 0 ? (d > 0 ? -1 : list.length) : i;
+        list[(base + d + list.length) % list.length].focus();
+    });
+
+    window.addEventListener('resize', () => closeMenu());
+    window.addEventListener('blur', () => closeMenu());
+    // 页面或列表一滚动菜单就脱离锚点，直接收起（capture 才能听到列表内部滚动）
+    window.addEventListener('scroll', () => closeMenu(), true);
+
+    // 桌面右键
+    root.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const r = root.getBoundingClientRect();
+        // 键盘（Shift+F10 / 菜单键）触发时坐标是 0,0，那就锚到卡片中间
+        openMenu(e.clientX || r.left + r.width / 2, e.clientY || r.top + r.height / 2);
+    });
+
+    /* 触屏长按唤出：iOS 不会派发 contextmenu，只能自己判定。
+       按下后移动超过阈值（即开始滚动）就取消 */
+    const LONG_PRESS_MS = 500;
+    const LONG_PRESS_MOVE = 10;
+    let pressTimer = 0;
+    let pressFrom = null;
+    let suppressClick = false;   // 长按唤出后，抑制松手时落到按钮上的那一次 click
+
+    root.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' || e.button !== 0) return;
+        suppressClick = false;
+        pressFrom = { x: e.clientX, y: e.clientY };
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(() => {
+            pressTimer = 0;
+            suppressClick = true;
+            openMenu(e.clientX, e.clientY);
+        }, LONG_PRESS_MS);
+    });
+
+    root.addEventListener('pointermove', (e) => {
+        if (!pressTimer || !pressFrom) return;
+        if (Math.hypot(e.clientX - pressFrom.x, e.clientY - pressFrom.y) > LONG_PRESS_MOVE) {
+            clearTimeout(pressTimer);
+            pressTimer = 0;
+        }
+    });
+
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+        root.addEventListener(type, () => { clearTimeout(pressTimer); pressTimer = 0; });
+    });
+
+    root.addEventListener('click', (e) => {
+        if (!suppressClick) return;
+        suppressClick = false;
+        e.preventDefault();
+        e.stopPropagation();
+    }, true);
+
     /* ---------------- 启动 ---------------- */
+    loadPrefs();
     measureTrack();
     renderProgress(0);
     applyMeta({ ...FALLBACK_META });
+    syncMenu();
+    applyTrackNav();
+    applyPlaylistVisible();
     playerMini.inert = true;
     playlistBody.inert = true;
     measureMorphHeights();

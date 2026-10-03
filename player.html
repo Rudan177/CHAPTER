@@ -49,9 +49,12 @@
                         <div class="progress-zone">
                             <div class="slider" id="slider" role="slider" tabindex="0"
                                  aria-label="播放进度" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0:00">
+                                <div class="slider-bubble" id="sliderBubble" aria-hidden="true"><span id="sliderBubbleTime">0:00</span></div>
                                 <div class="slider-track">
-                                    <div class="slider-layer slider-buffered" id="sliderBuffered"></div>
-                                    <div class="slider-layer slider-fill" id="sliderFill"></div>
+                                    <div class="slider-clip">
+                                        <div class="slider-layer slider-buffered" id="sliderBuffered"></div>
+                                        <div class="slider-layer slider-fill" id="sliderFill"></div>
+                                    </div>
                                     <div class="slider-thumb" id="sliderThumb"></div>
                                 </div>
                             </div>
@@ -64,7 +67,11 @@
                         <div class="controls">
                             <button class="skip-btn ripple" id="btnPrev" type="button" aria-label="上一曲">
                                 <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                                    <g class="icon-track"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></g>
+                                    <g class="icon-seek">
+                                        <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                                        <path d="M10.89 16h-.85v-3.26l-1.01.31v-.69l1.77-.63h.09V16zm4.28-1.76c0 .32-.03.6-.1.82s-.17.42-.29.57-.28.26-.45.33-.37.1-.59.1-.41-.03-.59-.1-.33-.18-.46-.33-.23-.34-.3-.57-.11-.5-.11-.82v-.74c0-.32.03-.6.1-.82s.17-.42.29-.57.28-.26.45-.33.37-.1.59-.1.41.03.59.1.33.18.46.33.23.34.3.57.11.5.11.82v.74zm-.85-.86c0-.19-.01-.35-.04-.48s-.07-.23-.12-.31-.11-.14-.19-.17-.16-.05-.25-.05-.18.02-.25.05-.14.09-.19.17-.09.18-.12.31-.04.29-.04.48v.97c0 .19.01.35.04.48s.07.24.12.32.11.14.19.17.16.05.25.05.18-.02.25-.05.14-.09.19-.17.09-.19.11-.32.04-.29.04-.48v-.97z"/>
+                                    </g>
                                 </svg>
                             </button>
 
@@ -82,7 +89,11 @@
 
                             <button class="skip-btn ripple" id="btnNext" type="button" aria-label="下一曲">
                                 <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                                    <g class="icon-track"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></g>
+                                    <g class="icon-seek">
+                                        <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z"/>
+                                        <path d="M10.86 15.94v-4.27h-.09L9 12.3v.69l1.01-.31v3.26zm1.39-2.5v.74c0 1.9 1.31 1.82 1.44 1.82.14 0 1.44.09 1.44-1.82v-.74c0-1.9-1.31-1.82-1.44-1.82-.14 0-1.44-.09-1.44 1.82zm2.04-.12v.97c0 .77-.21 1.03-.59 1.03s-.6-.26-.6-1.03v-.97c0-.75.22-1.01.59-1.01.38-.01.6.26.6 1.01z"/>
+                                    </g>
                                 </svg>
                             </button>
                         </div>
@@ -105,7 +116,13 @@
                         </span>
                     </button>
                     <button class="mini-btn ripple" id="btnMiniPrev" type="button" aria-label="上一曲">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <g class="icon-track"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></g>
+                            <g class="icon-seek">
+                                <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                                <path d="M10.89 16h-.85v-3.26l-1.01.31v-.69l1.77-.63h.09V16zm4.28-1.76c0 .32-.03.6-.1.82s-.17.42-.29.57-.28.26-.45.33-.37.1-.59.1-.41-.03-.59-.1-.33-.18-.46-.33-.23-.34-.3-.57-.11-.5-.11-.82v-.74c0-.32.03-.6.1-.82s.17-.42.29-.57.28-.26.45-.33.37-.1.59-.1.41.03.59.1.33.18.46.33.23.34.3.57.11.5.11.82v.74zm-.85-.86c0-.19-.01-.35-.04-.48s-.07-.23-.12-.31-.11-.14-.19-.17-.16-.05-.25-.05-.18.02-.25.05-.14.09-.19.17-.09.18-.12.31-.04.29-.04.48v.97c0 .19.01.35.04.48s.07.24.12.32.11.14.19.17.16.05.25.05.18-.02.25-.05.14-.09.19-.17.09-.19.11-.32.04-.29.04-.48v-.97z"/>
+                            </g>
+                        </svg>
                     </button>
                     <button class="mini-btn ripple" id="btnMiniPlay" type="button" aria-label="播放">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -117,7 +134,13 @@
                         </svg>
                     </button>
                     <button class="mini-btn ripple" id="btnMiniNext" type="button" aria-label="下一曲">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <g class="icon-track"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></g>
+                            <g class="icon-seek">
+                                <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z"/>
+                                <path d="M10.86 15.94v-4.27h-.09L9 12.3v.69l1.01-.31v3.26zm1.39-2.5v.74c0 1.9 1.31 1.82 1.44 1.82.14 0 1.44.09 1.44-1.82v-.74c0-1.9-1.31-1.82-1.44-1.82-.14 0-1.44-.09-1.44 1.82zm2.04-.12v.97c0 .77-.21 1.03-.59 1.03s-.6-.26-.6-1.03v-.97c0-.75.22-1.01.59-1.01.38-.01.6.26.6 1.01z"/>
+                            </g>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -159,5 +182,42 @@
     <audio id="audio" preload="metadata"></audio>
     <noscript><p class="noscript">需要启用 JavaScript 才能使用播放器。</p></noscript>
 </main>
+
+<!-- 播放器右键菜单：上方两个下载动作 + 下方三个显示开关（MD3 Expressive） -->
+<div class="menu-layer" id="menuLayer" hidden>
+    <div class="menu" id="playerMenu" role="menu" aria-label="播放器菜单">
+        <button class="menu-item" type="button" role="menuitem" data-act="cover" id="menuDownloadCover">
+            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            <span class="menu-label">下载封面</span>
+        </button>
+        <button class="menu-item" type="button" role="menuitem" data-act="lyrics" id="menuDownloadLyrics">
+            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            <span class="menu-label">下载歌词</span>
+        </button>
+        <div class="menu-divider" role="separator"></div>
+        <button class="menu-item" type="button" role="menuitemcheckbox" data-pref="lyrics" aria-checked="false">
+            <svg class="menu-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span class="menu-label">显示歌词</span>
+        </button>
+        <button class="menu-item" type="button" role="menuitemcheckbox" data-pref="playlist" aria-checked="true">
+            <svg class="menu-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span class="menu-label">显示播放列表</span>
+        </button>
+        <button class="menu-item" type="button" role="menuitemcheckbox" data-pref="trackNav" aria-checked="true">
+            <svg class="menu-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span class="menu-label">显示上下曲</span>
+        </button>
+    </div>
+</div>
 </body>
 </html>

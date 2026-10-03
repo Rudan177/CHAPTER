@@ -530,32 +530,61 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
     touch-action: none;
     outline: none;
     -webkit-tap-highlight-color: transparent;
+    /* 轨道高度令牌：静息 ⇄ 悬停/拖动。轨道、填充、滑块都读它，
+       所以加粗时整条进度条一起长高，不会出现层次错位 */
+    --track-h: 16px;
+    --track-h-active: 22px;
 }
 
 .slider-track {
     position: relative;
-    height: 16px;
+    height: var(--track-h);
     border-radius: var(--shape-full);
     background: var(--surface-container-highest);
     overflow: visible;
+    transition: height .26s var(--ease-emphasized),
+                box-shadow .26s var(--ease-emphasized),
+                background-color .6s var(--ease-emphasized);
+}
+
+/* 圆角裁剪层：单独包住两层进度。
+   填充层靠 scaleX 缩放，若自身带 999px 圆角会被压成扁椭圆、和轨道圆角对不齐；
+   交给这一层按轨道圆角裁剪后，任意进度下左端都与轨道严丝合缝。
+   thumb 留在裁剪层外，仍可超出轨道不会被切 */
+.slider-clip {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+/* 只有拖动（按住）时才加粗抬起；悬停不改变轨道尺寸 */
+.slider.is-dragging .slider-track {
+    height: var(--track-h-active);
+    box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--primary) 60%, transparent);
 }
 
 .slider-layer {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
     transform-origin: left center;
     will-change: transform;
 }
 
+/* 缓冲层：比轨道底色高一档，让「已缓存」区间读得出来 */
 .slider-buffered {
-    background: color-mix(in oklab, var(--on-surface) 14%, transparent);
+    background: color-mix(in oklab, var(--on-surface) 16%, transparent);
     transform: scaleX(0);
+    transition: transform .35s var(--ease-decel);
 }
 
+/* 填充层：主色 + 顶部高光；自身不做圆角，两端由 .slider-clip 裁出 */
 .slider-fill {
-    background: var(--primary);
+    background-color: var(--primary);
+    background-image: linear-gradient(180deg,
+        rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, .10));
     transform: scaleX(0);
+    transition: background-color .6s var(--ease-emphasized);
 }
 
 .slider-thumb {
@@ -563,17 +592,64 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
     top: 50%;
     left: 0;
     width: 4px;
-    height: 44px;
+    height: 44px;              /* 长条手柄；上下各探出轨道 14px，尺寸不随轨道加粗变化 */
     border-radius: var(--shape-full);
-    background: var(--primary);
+    background-color: var(--primary);
+    background-image: linear-gradient(180deg,
+        rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 58%);
     transform: translate(-50%, -50%);
-    transition: width .35s var(--ease-spring, var(--ease-spring-fallback));
+    transition: width .35s var(--ease-spring, var(--ease-spring-fallback)),
+                background-color .6s var(--ease-emphasized),
+                box-shadow .28s var(--ease-emphasized);
     will-change: transform;
 }
 
-.slider:hover .slider-thumb,
+/* 变宽只发生在「真的碰到手柄」（.is-thumb-hot 由 JS 按指针与手柄的距离判定）、
+   拖动中、以及键盘聚焦时 */
+.slider.is-thumb-hot .slider-thumb,
 .slider.is-dragging .slider-thumb,
 .slider:focus-visible .slider-thumb { width: 28px; }
+
+.slider.is-dragging .slider-thumb {
+    box-shadow: 0 4px 20px -2px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+/* 拖动 / 悬停时间气泡：横向位置由 JS 写 --bx（轨道坐标系），
+   两端会贴合边界避免溢出卡片；拖动中取消位置过渡以逐帧跟手 */
+.slider-bubble {
+    position: absolute;
+    left: 0;
+    bottom: calc(50% + 22px);   /* 手柄半高：气泡底边正好落在 44px 手柄的顶端 */
+    z-index: 3;
+    padding: 3px 10px;
+    border-radius: var(--shape-full);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+    line-height: 1.5;
+    color: var(--on-primary);
+    background-color: var(--primary);
+    box-shadow: 0 8px 20px -8px rgba(20, 26, 48, .55);
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(calc(var(--bx, 0px) - 50%), 6px) scale(.8);
+    transform-origin: center bottom;
+    transition: opacity .16s var(--ease-decel),
+                transform .2s var(--ease-decel),
+                background-color .6s var(--ease-emphasized);
+}
+
+.slider.is-hovering .slider-bubble,
+.slider.is-dragging .slider-bubble {
+    opacity: 1;
+    transform: translate(calc(var(--bx, 0px) - 50%), 0) scale(1);
+}
+
+.slider.is-dragging .slider-bubble {
+    transition: opacity .1s linear, background-color .6s var(--ease-emphasized);
+}
 
 /* 焦点环统一用实心 --primary：对比约 4.5:1（达标）。
    早前用 color-mix(..., 55~60%, transparent) 只有约 2.2:1，不满足
@@ -722,6 +798,22 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
 .is-playing .icon-play { opacity: 0; transform: rotate(-90deg) scale(.4); }
 .is-playing .icon-pause { opacity: 1; transform: none; }
 
+/* 上一曲 / 下一曲 ⇄ 快退 / 快进 10 秒 的图标互换。
+   与播放暂停同一套形变；body.seek-mode 由右键菜单的「显示上下曲」切换。
+   选择器必须写成顶层（body.seek-mode 前缀），嵌套在外层规则里会拼出永不匹配的选择器 */
+.icon-track,
+.icon-seek {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: opacity .22s var(--ease-emphasized),
+                transform .45s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.icon-seek { opacity: 0; transform: rotate(90deg) scale(.4); }
+
+body.seek-mode .icon-track { opacity: 0; transform: rotate(-90deg) scale(.4); }
+body.seek-mode .icon-seek { opacity: 1; transform: none; }
+
 /* 缓冲指示环 */
 .fab-ring {
     position: absolute;
@@ -801,6 +893,9 @@ body.list-open .playlist-card {
     grid-template-rows: auto minmax(0px, var(--list-h));
     border-radius: var(--radius-playlist-open);
 }
+
+/* 右键菜单里关掉「显示播放列表」：整张卡片移出布局（JS 同时会收起展开态） */
+body.no-playlist .playlist-card { display: none; }
 
 .playlist-head {
     display: flex;
@@ -1109,6 +1204,106 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     outline-offset: 3px;
 }
 
+/* ---------- 右键菜单（MD3 Expressive 勾选菜单） ----------
+   整屏透明层负责「点击别处关闭」；菜单自身固定在视口上，
+   位置与展开原点（--menu-origin）由 JS 按指针坐标写入，
+   便从指针所在的那一角缩放开场 */
+.menu-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 18;                 /* 低于错误浮层，错误浮层出现时会先关掉菜单 */
+}
+
+.menu-layer[hidden] { display: none; }
+
+.menu {
+    position: fixed;
+    left: 0;
+    top: 0;
+    min-width: 208px;
+    max-width: min(320px, calc(100vw - 16px));
+    padding: var(--space-200);
+    border-radius: var(--shape-lg);
+    background: var(--surface-container-high);
+    background: color-mix(in oklab, var(--surface-container-high) 94%, transparent);
+    backdrop-filter: blur(28px) saturate(1.25);
+    -webkit-backdrop-filter: blur(28px) saturate(1.25);
+    box-shadow: 0 22px 52px -14px rgba(20, 26, 48, .5);
+    transform-origin: var(--menu-origin, 0 0);
+    opacity: 0;
+    transform: scale(.82);
+    transition: opacity .16s var(--ease-decel),
+                transform .26s var(--ease-emphasized);
+}
+
+.menu.is-open { opacity: 1; transform: none; }
+
+/* 动作项（下载）与勾选项之间的分组分隔线 */
+.menu-divider {
+    height: 1px;
+    margin: var(--space-200) var(--space-300);
+    background: color-mix(in oklab, var(--on-surface) 14%, transparent);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-300);
+    width: 100%;
+    min-height: 48px;
+    padding: 0 var(--space-300);
+    /* 行圆角 = 容器圆角 - 容器内边距，两条弧在左侧同心 */
+    border-radius: calc(var(--shape-lg) - var(--space-200));
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--on-surface);
+    text-align: left;
+    transition: background-color .2s var(--ease-emphasized);
+}
+
+.menu-item:not(:disabled):hover,
+.menu-item:not(:disabled):focus-visible { background: color-mix(in oklab, var(--on-surface) 8%, transparent); }
+
+.menu-item:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+/* 不可用（当前曲目没有内嵌封面 / 歌词）：MD3 的 38% 前景 + 无状态层 */
+.menu-item:disabled { color: color-mix(in oklab, var(--on-surface) 38%, transparent); cursor: default; }
+.menu-item:disabled .menu-icon { fill: color-mix(in oklab, var(--on-surface) 38%, transparent); }
+
+/* 动作项的前导图标：与勾选槽同宽，保证两组文案左缘对齐 */
+.menu-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: var(--on-surface-variant);
+}
+
+/* 勾选槽：未选中时保留占位（与 MD3 选择菜单一致，所有文案左缘对齐） */
+.menu-check {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    fill: var(--primary);
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity .18s var(--ease-emphasized),
+                transform .3s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.menu-item[aria-checked="true"] .menu-check { opacity: 1; transform: none; }
+
+.menu-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ============================================================
    移动端适配（compact 窗口）：完整形态改单列（封面在上、信息在下）
    窗口边距 28、卡片内边距 28、同心圆角 20 + 28 = 48
@@ -1158,9 +1353,8 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
     }
 
     /* 移动端收紧滑条触控留白与时间行上边距 */
-    .slider { min-height: 44px; }   /* 触控目标 ≥44px（原先 40 偏小） */
+    .slider { min-height: 44px; --track-h: 14px; --track-h-active: 20px; }   /* 触控目标 ≥44px（原先 40 偏小） */
     .times { margin-top: 2px; }   /* 2px 视觉微调，M3 间距刻度无此档，故不套令牌 */
-    .slider-track { height: 14px; }
 
     /* 收起形态：窄屏进一步收紧（.controls gap / .skip-btn 与桌面同值，不再重复声明） */
     .mini-inner { gap: var(--space-300); padding: 0 var(--space-300) 0 var(--space-200); }
