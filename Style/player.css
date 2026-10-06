@@ -547,6 +547,11 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
        所以加粗时整条进度条一起长高，不会出现层次错位 */
     --track-h: 16px;
     --track-h-active: 22px;
+    /* 手柄几何：只有 JS 写 --thumb-x（轨道坐标系里的手柄中心 x），
+       手柄与方块都读它 —— 两者永远共用一个真值，不可能各算各的。
+       --thumb-w 由下面几条状态规则改写（4 ⇄ 28） */
+    --thumb-x: 0px;
+    --thumb-w: 4px;
 }
 
 .slider-track {
@@ -591,11 +596,9 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
     transition: transform .35s var(--ease-decel);
 }
 
-/* 填充层：主色 + 顶部高光；自身不做圆角，两端由 .slider-clip 裁出 */
+/* 填充层：纯主色（不做渐变）；自身不做圆角，两端由 .slider-clip 裁出 */
 .slider-fill {
     background-color: var(--primary);
-    background-image: linear-gradient(180deg,
-        rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, .10));
     transform: scaleX(0);
     transition: background-color .6s var(--ease-emphasized);
 }
@@ -604,24 +607,67 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
     position: absolute;
     top: 50%;
     left: 0;
-    width: 4px;
+    width: var(--thumb-w);
     height: 44px;              /* 长条手柄；上下各探出轨道 14px，尺寸不随轨道加粗变化 */
     border-radius: var(--shape-full);
     background-color: var(--primary);
-    background-image: linear-gradient(180deg,
-        rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 58%);
-    transform: translate(-50%, -50%);
+    transform: translate(calc(var(--thumb-x) - 50%), -50%);
     transition: width .35s var(--ease-spring, var(--ease-spring-fallback)),
                 background-color .6s var(--ease-emphasized),
                 box-shadow .28s var(--ease-emphasized);
     will-change: transform;
 }
 
+/* 手柄上的小方块：厚薄恒等于轨道（拖动加粗时同步）。
+   未过半贴在手柄右边（未播放区），过半镜像到左边（已播放区）。
+   它是 .slider-track 的直系子元素、而不是手柄的子元素：
+   手柄带 will-change: transform（独立合成层，栅格原点会被吸附到设备整像素），
+   方块若跟着它走，边缘就会和轨道差半个像素；放在轨道这一层里绘制才逐像素同源。
+   几何也一起简化：top: 50% / translateY(-50%) 都以轨道为百分比基准，
+   正好等于轨道上下沿，不再绕经 44px 高的手柄 */
+.slider-thumb-block {
+    position: absolute;
+    top: 50%;
+    left: var(--thumb-x);
+    width: var(--track-h);
+    height: var(--track-h);
+    transform: translate(calc(var(--thumb-w) / 2), -50%);
+    background-color: var(--surface-container-highest);
+    transition: width .26s var(--ease-emphasized),
+                height .26s var(--ease-emphasized),
+                background-color .3s var(--ease-emphasized);
+}
+
+.slider.is-dragging .slider-thumb-block {
+    width: var(--track-h-active);
+    height: var(--track-h-active);
+}
+
+/* 方块已落在缓冲条带里：不能用 color-mix 把两层混成一个色（混出来比真实叠加浅一档，
+   方块会露馅），而是照抄 .slider-buffered 那层半透明色，叠在同样取自轨道的底色上——
+   渲染路径与缓冲层逐像素一致，方块彻底隐形 */
+.slider-thumb-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in oklab, var(--on-surface) 16%, transparent);
+    opacity: 0;
+}
+
+.slider.is-block-buffered .slider-thumb-block::before { opacity: 1; }
+
+/* 过半：方块移到手柄左侧，落在已播放区，直接取主色。
+   left 仍锚在手柄中心，改由 translate 往左退「半个手柄 + 一个方块」 */
+.slider.is-past-half .slider-thumb-block {
+    transform: translate(calc(var(--thumb-w) / -2 - var(--track-h)), -50%);
+    background-color: var(--primary);
+}
+
 /* 变宽只发生在「真的碰到手柄」（.is-thumb-hot 由 JS 按指针与手柄的距离判定）、
-   拖动中、以及键盘聚焦时 */
-.slider.is-thumb-hot .slider-thumb,
-.slider.is-dragging .slider-thumb,
-.slider:focus-visible .slider-thumb { width: 28px; }
+   拖动中、以及键盘聚焦时。改的是 --thumb-w，手柄与方块一起读 */
+.slider.is-thumb-hot,
+.slider.is-dragging,
+.slider:focus-visible { --thumb-w: 28px; }
 
 .slider.is-dragging .slider-thumb {
     box-shadow: 0 4px 20px -2px color-mix(in oklab, var(--primary) 70%, transparent);

@@ -56,7 +56,6 @@
     const sliderTrack = slider.querySelector('.slider-track');
     const sliderFill = $('sliderFill');
     const sliderBuffered = $('sliderBuffered');
-    const sliderThumb = $('sliderThumb');
     const sliderBubble = $('sliderBubble');
     const sliderBubbleTime = $('sliderBubbleTime');
     const timeCurrent = $('timeCurrent');
@@ -176,8 +175,10 @@
 
     /* ---------------- 进度渲染（仅写 transform，走合成器） ---------------- */
     let trackWidth = 0;
+    let bufferedRatio = 0;        // 最近一次缓冲进度（0~1），供手柄方块的配色判定
     let hoverRatio = null;        // 悬停时指针所在的轨道比例；指针离开后置空
     const THUMB_HOT_PX = 14;      // 「碰到手柄」的判定半径（px）
+    const THUMB_BLOCK_MID_PX = 10; // 方块中心相对手柄中心：手柄半宽 2px + 方块半宽 8px
     let thumbHotLatched = false;  // 松手后先回到细态，指针离开手柄再靠近才重新变宽
 
     function measureTrack() {
@@ -187,7 +188,10 @@
     function renderProgress(current) {
         const p = isFiniteDuration() && duration > 0 ? clamp(current / duration, 0, 1) : 0;
         sliderFill.style.transform = `scaleX(${p})`;
-        sliderThumb.style.transform = `translate(calc(${(p * trackWidth).toFixed(1)}px - 50%), -50%)`;
+        // 只写这一个真值：手柄与方块（含过半后的镜像）都由 CSS 从它推导，
+        // 两者不可能各算各的，也就不会差出半像素
+        slider.style.setProperty('--thumb-x', `${(p * trackWidth).toFixed(1)}px`);
+        syncThumbBlock(p);
         timeCurrent.textContent = fmtTime(current);
         // aria 值与视觉进度一样要 clamp，否则 currentTime 短暂越界时会
         // 出现 valuenow > valuemax 的非法组合
@@ -202,14 +206,32 @@
         updateLyric(current);
     }
 
+    /* 手柄上的小方块：未过半贴在手柄右边（未播放区），过半镜像到左边（已播放区）。
+       配色跟着「方块所在处的轨道状态」走，免得在缓冲条带上露出一块异色：
+       已播放 = 主色，已缓冲 = 缓冲层合成色，未缓冲 = 轨道底色 */
+    function syncThumbBlock(p) {
+        if (p >= 0.5) {
+            slider.classList.add('is-past-half');
+            slider.classList.remove('is-block-buffered');
+            return;
+        }
+        slider.classList.remove('is-past-half');
+        // 只判方块中心点落在缓冲进度之内；缓冲边界扫过这 16px 时换一次色，肉眼不可辨
+        slider.classList.toggle('is-block-buffered',
+            bufferedRatio * trackWidth >= p * trackWidth + THUMB_BLOCK_MID_PX);
+    }
+
     function renderBuffered() {
-        if (!isFiniteDuration() || duration <= 0) return;
+        if (!isFiniteDuration() || duration <= 0) { bufferedRatio = 0; return; }
         let end = 0;
         const b = audio.buffered;
         for (let i = 0; i < b.length; i++) {
             if (b.end(i) > end) end = b.end(i);
         }
-        sliderBuffered.style.transform = `scaleX(${clamp(end / duration, 0, 1)})`;
+        bufferedRatio = clamp(end / duration, 0, 1);
+        sliderBuffered.style.transform = `scaleX(${bufferedRatio})`;
+        // 播放中方块的配色每帧都由 renderProgress 重算；暂停时缓冲推进没有别的入口，这里补一次
+        if (!isDragging) syncThumbBlock(clamp(audio.currentTime / duration, 0, 1));
     }
 
     /* 时间气泡：ratio 是 0~1 的轨道比例，两端贴边避免气泡滑出卡片；
@@ -417,6 +439,7 @@
         coverToken++;                       // 作废在途的封面/元数据请求
 
         duration = 0;
+        bufferedRatio = 0;
         timeDuration.textContent = '--:--';
         sliderBuffered.style.transform = 'scaleX(0)';
         hideBubble();
