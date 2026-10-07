@@ -215,7 +215,7 @@
     </div>
 </div>
 
-<!-- 播放器右键菜单：上方两个下载动作 + 下方三个显示开关（MD3 Expressive） -->
+<!-- 播放器右键菜单：上方两个下载动作 + 中间三个显示开关 + 下方投稿 / 关于（MD3 Expressive） -->
 <div class="menu-layer" id="menuLayer" hidden>
     <div class="menu" id="playerMenu" role="menu" aria-label="播放器菜单" tabindex="-1">
         <button class="menu-item" type="button" role="menuitem" data-act="cover" id="menuDownloadCover">
@@ -259,6 +259,70 @@
             </svg>
             <span class="menu-label">投稿</span>
         </button>
+        <button class="menu-item" type="button" role="menuitem" data-act="about">
+            <!-- Material Symbols: info（实心 · 圆角） -->
+            <svg class="menu-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                <path d="M480-280q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/>
+            </svg>
+            <span class="menu-label">关于</span>
+        </button>
+    </div>
+</div>
+
+<!-- 关于：从「关于」菜单项唤出的模态卡片（整屏压暗 + 背景模糊，卡片自中心放大弹出） -->
+<div class="about-layer" id="aboutLayer" hidden>
+    <div class="about-card" id="aboutCard" role="dialog" aria-modal="true"
+         aria-labelledby="aboutTitle" tabindex="-1">
+        <div class="about-head">
+            <h2 class="about-title" id="aboutTitle">关于 OOOInterface Concert Player 播放器</h2>
+            <button class="about-close ripple" id="btnAboutClose" type="button" aria-label="关闭">
+                <span class="ripple-clip" aria-hidden="true"></span>
+                <!-- Material Symbols: close（实心 · 圆角） -->
+                <svg viewBox="0 -960 960 960" aria-hidden="true">
+                    <path d="M480-424 284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536-480l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480-424Z"/>
+                </svg>
+            </button>
+        </div>
+        <dl class="about-meta">
+            <div class="about-meta-row">
+                <dt>版本号</dt>
+                <dd>1.5.2</dd>
+            </div>
+            <div class="about-meta-row">
+                <dt>更新日期</dt>
+                <dd id="aboutDate">--</dd>
+            </div>
+            <div class="about-meta-row">
+                <dt>操作系统</dt>
+                <dd id="aboutOs">--</dd>
+            </div>
+            <div class="about-meta-row">
+                <dt>设备类型</dt>
+                <dd id="aboutDevice">--</dd>
+            </div>
+            <div class="about-meta-row">
+                <dt>浏览器</dt>
+                <dd id="aboutBrowser">--</dd>
+            </div>
+            <div class="about-meta-row">
+                <dt>所在地区</dt>
+                <dd id="aboutRegion">--</dd>
+            </div>
+        </dl>
+        <!-- 详细介绍默认收起，点这一行展开（MD3 渐进披露） -->
+        <button class="about-toggle ripple" id="btnAboutToggle" type="button"
+                aria-expanded="false" aria-controls="aboutDetail">
+            <span class="ripple-clip" aria-hidden="true"></span>
+            <span class="about-toggle-label" id="aboutToggleLabel">查看详细介绍</span>
+            <svg class="about-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+            </svg>
+        </button>
+        <div class="about-detail" id="aboutDetail">
+            <div class="about-detail-clip">
+                <p>OOOInterface 致力于通过不断的更新为用户带来更好的体验。但受限于时间和精力，在可见的未来几个月里，OOOInterface 都无法以 7月 8 月的速度更新。但请不必悲哀，这并不意味着 OOOInterface 将彻底消失。在团结协作下，OOOInterface 承诺，仍能在每周提供 尝鲜版 渠道更新，每个月提供 正式版 渠道更新。除此之外，我们还策划了另一项活动——OCP（OOOInterface Concert Play）。OOOInterface 将公开征集用户的音乐喜好或需求，每日在 OOOInterface 和 CHAPTER 为用户提供一首或多首音乐。</p>
+            </div>
+        </div>
     </div>
 </div>
 </body>

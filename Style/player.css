@@ -1343,7 +1343,7 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
 
 .menu.is-open { opacity: 1; transform: none; }
 
-/* 分组分隔线：下载动作 / 显示开关 / 投稿 三组之间各一条 */
+/* 分组分隔线：下载动作 / 显示开关 / 投稿·关于 三组之间各一条 */
 .menu-divider {
     height: 1px;
     margin: var(--space-200) var(--space-300);
@@ -1420,6 +1420,198 @@ body.menu-dragging .menu-item.is-pressed { background: color-mix(in oklab, var(-
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* ---------- 关于（MD3 Expressive 模态卡片） ----------
+   自右键菜单「关于」唤出：整屏压暗 + 背景模糊，卡片从略小处放大弹出。
+   与菜单同一套做法 —— 隐藏走 [hidden]，入场 / 出场由 .is-open 驱动
+   （基础规则写「收起」的节奏，.is-open 覆写成更慢的过冲弹簧） */
+.about-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 19;                 /* 高于菜单（18）/ 日历（17），低于错误浮层（20） */
+    display: grid;
+    place-items: center;
+    /* 卡片比视口还高时（横屏手机 / 矮窗口）由整层滚动兜底：
+       不给卡片设 max-height —— 一旦设了，flex 列会把可收缩的详细介绍压扁，
+       而裁切层是 overflow:hidden，正文就被无声吃掉一截，还滚不出来。
+       单条 auto 轨道在自由空间为负时不会 stretch，自动贴顶，滚得到底 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: max(var(--space-400), env(safe-area-inset-top)) var(--space-400)
+             max(var(--space-400), env(safe-area-inset-bottom));
+    background: var(--surface);                                        /* 无 color-mix 时的回退 */
+    background: color-mix(in oklab, var(--surface) 45%, transparent);  /* 与错误浮层同款渐进增强 */
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    opacity: 0;
+    transition: opacity .22s var(--ease-decel);
+}
+
+.about-layer[hidden] { display: none; }
+
+.about-layer.is-open { opacity: 1; }
+
+.about-card {
+    display: flex;
+    flex-direction: column;
+    width: min(560px, 100%);
+    border-radius: var(--shape-xl);
+    background: var(--surface-container-high);
+    box-shadow: var(--shadow-key);
+    overflow: hidden;            /* 裁掉头部 / 正文越过圆角的部分 */
+    outline: none;
+    opacity: 0;
+    transform: scale(.88);
+    /* 收起：比打开更快，缩短「退场」的等待 */
+    transition: opacity .2s var(--ease-decel),
+                transform .28s var(--ease-emphasized);
+}
+
+/* 打开：过冲弹簧让卡片「涨大一点再回落」，即「变大弹出」的手感。
+   收起时回到基础规则里的短时长，两条过渡不会互相拖慢 */
+.about-layer.is-open .about-card {
+    opacity: 1;
+    transform: none;
+    transition: opacity .26s var(--ease-decel),
+                transform .5s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.about-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-400);
+    padding: var(--space-600) var(--space-600) var(--space-400);
+}
+
+.about-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+
+.about-close {
+    position: relative;          /* 涟漪裁在圆内：自带定位 + 圆角 + overflow */
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin: -6px -6px 0 0;       /* 视觉上与标题首行对齐，同时保留 40px 触控面 */
+    border-radius: var(--shape-full);
+    overflow: hidden;
+    color: var(--on-surface-variant);
+    transition: background-color .18s var(--ease-emphasized);
+}
+
+@media (hover: hover) {
+    .about-close:hover { background: color-mix(in oklab, var(--on-surface) 8%, transparent); }
+}
+
+.about-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.about-close svg { width: 22px; height: 22px; fill: currentColor; }
+
+/* 版本 / 更新日期：MD3 supporting text 的行式排布，数字用等宽数位免得跳动 */
+.about-meta {
+    margin: 0;
+    padding: 0 var(--space-600) var(--space-200);
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    font-variant-numeric: tabular-nums;
+}
+
+.about-meta-row {
+    display: flex;
+    gap: var(--space-300);
+    padding: 6px 0;
+}
+
+.about-meta dt {
+    flex: none;
+    min-width: 4.5em;
+    color: color-mix(in oklab, var(--on-surface-variant) 88%, transparent);
+}
+
+.about-meta dd {
+    margin: 0;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+/* 展开控制条：整行可点，文案随状态切换（两种文案等宽，展开时不会左右跳） */
+.about-toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-300);
+    width: 100%;
+    min-height: 48px;
+    padding: 0 var(--space-600);
+    overflow: hidden;            /* 涟漪裁在行内 */
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: background-color .2s var(--ease-emphasized);
+}
+
+@media (hover: hover) {
+    .about-toggle:hover { background: color-mix(in oklab, var(--primary) 8%, transparent); }
+}
+
+.about-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+.about-chevron {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    /* 与卡片弹出同一条弹簧，展开的手感是连着的 */
+    transition: transform .34s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.about-card.is-expanded .about-chevron { transform: rotate(180deg); }
+
+/* 详细介绍：默认 0 行高（收起）。单条 fr 轨道插值需要配合
+   子项 overflow:hidden + min-height:0，否则 minmax(auto, 0fr) 里的 auto
+   会被正文的 min-content 撑住，永远收不到 0。
+   .about-detail 自己是 flex 子项，也得显式 min-height:0，同理 */
+.about-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    min-height: 0;
+    transition: grid-template-rows .5s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.about-card.is-expanded .about-detail { grid-template-rows: 1fr; }
+
+.about-detail-clip {
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 内边距写在正文（被裁层之内）而不是裁层自己身上：
+   border-box 下带内边距的裁层收缩不到 0 */
+.about-detail-clip p {
+    margin: 0;
+    padding: var(--space-200) var(--space-600) var(--space-600);
+    font-size: 14.5px;
+    line-height: 1.8;
+    color: var(--on-surface-variant);
+    text-wrap: pretty;
+}
+
+@media (max-width: 760px) {
+    .about-head { padding: var(--space-500) var(--space-500) var(--space-300); gap: var(--space-300); }
+    .about-title { font-size: 19px; }
+    .about-meta { padding: 0 var(--space-500) var(--space-200); }
+    .about-toggle { padding: 0 var(--space-500); }
+    .about-detail-clip p { padding: var(--space-200) var(--space-500) var(--space-500); font-size: 14px; line-height: 1.75; }
 }
 
 /* ---------- 曲目日历（MD3 Expressive） ----------

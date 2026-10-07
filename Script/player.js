@@ -89,6 +89,16 @@
     const playerMenu = $('playerMenu');
     const menuDownloadCover = $('menuDownloadCover');
     const menuDownloadLyrics = $('menuDownloadLyrics');
+    const aboutLayer = $('aboutLayer');
+    const aboutCard = $('aboutCard');
+    const aboutDate = $('aboutDate');
+    const btnAboutClose = $('btnAboutClose');
+    const btnAboutToggle = $('btnAboutToggle');
+    const aboutToggleLabel = $('aboutToggleLabel');
+    const aboutOs = $('aboutOs');
+    const aboutDevice = $('aboutDevice');
+    const aboutBrowser = $('aboutBrowser');
+    const aboutRegion = $('aboutRegion');
 
     /* ---------------- 状态 ---------------- */
     let duration = 0;
@@ -171,7 +181,7 @@
         });
     }
     [btnPlay, btnPrev, btnNext, btnRetry, btnPlaylist, btnMiniOpen,
-        btnMiniPlay, btnMiniPrev, btnMiniNext].forEach(attachRipple);
+        btnMiniPlay, btnMiniPrev, btnMiniNext, btnAboutClose, btnAboutToggle].forEach(attachRipple);
 
     /* ---------------- 进度渲染（仅写 transform，走合成器） ---------------- */
     let trackWidth = 0;
@@ -480,6 +490,14 @@
     // 全局快捷键（焦点在控件上时由控件自己处理）
     window.addEventListener('keydown', (e) => {
         if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+        // 「关于」是模态：Esc / Tab 一律由它接管，且播放快捷键在它开着时不生效。
+        // 这条判断放在最前 —— 焦点落在关闭按钮上时，下面的 button 提前 return 会漏掉 Esc
+        if (!aboutLayer.hidden) {
+            e.preventDefault();
+            if (e.key === 'Escape') closeAbout();
+            else if (e.key === 'Tab') btnAboutClose.focus();
+            return;
+        }
         const t = e.target;
         if (t instanceof Element && t.closest('button, [role="slider"], input, textarea, select')) return;
         if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); togglePlay(); }
@@ -554,6 +572,8 @@
     // 否则键盘仍能 Tab 进去、激活被遮住的播放控件
     function showError(on) {
         errorLayer.hidden = !on;
+        // 错误浮层是全屏遮挡，比「关于」还高一层：出现时把两个浮层都收掉
+        if (on) closeAbout();
         document.querySelector('.player-stack').inert = on;
         if (on) { closeMenu(); btnRetry.focus(); return; }
         // 收起时若焦点还在浮层里的重试按钮上，交还给播放按钮
@@ -1569,7 +1589,7 @@
     /* ---------------- 右键菜单 ---------------- */
     const menuItems = [...playerMenu.querySelectorAll('.menu-item')];
     const PREF_APPLY = { lyrics: setLyrics, playlist: setPlaylistVisible, trackNav: setTrackNav };
-    const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics, submit: openSubmitForm };
+    const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics, submit: openSubmitForm, about: openAbout };
     const MENU_HIDE_MS = 260;     // 与 .menu 收起过渡同长，收起动画走完再真正隐藏
     let menuHideTimer = 0;
     let menuReturnFocus = null;
@@ -1842,6 +1862,204 @@
         e.preventDefault();
         e.stopPropagation();
     }, true);
+
+    /* ---------------- 关于 ----------------
+       菜单里的一次性动作：菜单收起后弹出模态卡片（背景模糊 + 放大弹出）。
+       收起走短过渡，但等它走完再置 hidden，否则卡片瞬间消失、看不到退场 */
+    const ABOUT_HIDE_MS = 300;
+    let aboutHideTimer = 0;
+    let aboutReturnFocus = null;
+
+    // 更新日期 = 清单里最大的 date（YYYYMMDD）→ 「YYYY年MM月DD日」；清单未到 / 全无日期时给 —。
+    // 直接读已规范化的 playlist（含从最新一条继承日期的固定首曲），与列表里显示的日期同源
+    function latestDateText() {
+        let max = '';
+        for (const t of playlist) {
+            const d = normDate(t.date);
+            if (d > max) max = d;
+        }
+        return max ? `${max.slice(0, 4)}年${max.slice(4, 6)}月${max.slice(6, 8)}日` : '—';
+    }
+
+    /* 运行环境四项：全部本地推断，不发任何网络请求（纯静态站没有可用的地理位置接口） */
+
+    // Chromium 的 UA 把 macOS 版本冻在 10.15.7，UA-CH 才能拿到真实版本。
+    // 页面加载就跑，等用户点开「关于」时早就回来了
+    let uaChPlatformVersion = null;
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(['platformVersion'])
+            .then((v) => { uaChPlatformVersion = (v && v.platformVersion) || null; })
+            .catch(() => { });
+    }
+
+    function detectOs() {
+        const ua = navigator.userAgent;
+        const uadPlatform = (navigator.userAgentData && navigator.userAgentData.platform) || '';
+        const p = uadPlatform || navigator.platform || '';
+        // iPadOS 的 UA 会伪装成 Mac，靠触点数认回来
+        const ios = /iPhone|iPad|iPod/.test(ua) || (/Mac/.test(p) && navigator.maxTouchPoints > 1);
+        if (ios) {
+            const m = ua.match(/OS (\d+)[._](\d+)(?:[._](\d+))?/);
+            return m ? `iOS ${m[1]}.${m[2]}${m[3] ? '.' + m[3] : ''}` : 'iOS';
+        }
+        if (/Android/.test(ua)) {                      // 必须排在 Linux 前面，Android 的 UA 里也带 Linux
+            const m = ua.match(/Android (\d+(?:\.\d+)*)/);
+            return m ? `Android ${m[1]}` : 'Android';
+        }
+        if (/CrOS/.test(ua) || p === 'Chrome OS') return 'Chrome OS';
+        if (/Windows/.test(ua) || /Win/.test(p)) {
+            return /Windows NT 10\.0/.test(ua) ? 'Windows 10 / 11' : 'Windows';   // NT 10.0 同时是 10 与 11
+        }
+        if (/Mac/.test(ua) || p === 'macOS') {
+            // 只认「UA-CH 也说是 macOS」的版本号：平台串与 UA 不符时（改 UA 的浏览器、
+            // 跨平台伪装）那个值其实是别的系统的版本，套上 macOS 就成了错的
+            if (uaChPlatformVersion && uadPlatform === 'macOS') {
+                return `macOS ${uaChPlatformVersion.split('.').slice(0, 2).join('.')}`;
+            }
+            const m = ua.match(/Mac OS X (\d+)[._](\d+)(?:[._](\d+))?/);
+            return m ? `macOS ${m[1]}.${m[2]}${m[3] ? '.' + m[3] : ''}` : 'macOS';
+        }
+        if (/Linux|X11/.test(ua) || p === 'Linux') return 'Linux';
+        return p || '未知';
+    }
+
+    function detectDeviceType() {
+        const ua = navigator.userAgent;
+        if (/iPad|Tablet|PlayBook|Silk/.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua))) return '平板';
+        if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+            return navigator.userAgentData.mobile ? '移动设备' : '电脑';
+        }
+        return /Mobi|iPhone|iPod|Android|Windows Phone|IEMobile|BlackBerry/.test(ua) ? '移动设备' : '电脑';
+    }
+
+    function detectBrowser() {
+        const ua = navigator.userAgent;
+        // 顺序即优先级：Edge / Opera 的 UA 里都含 Chrome，Safari 前面有一堆别的厂商串
+        const rules = [
+            [/\bEdg(?:e|A|iOS)?\/([\d.]+)/, 'Edge'],
+            [/\bOPR\/([\d.]+)/, 'Opera'],
+            [/\bSamsungBrowser\/([\d.]+)/, 'Samsung Internet'],
+            [/\bFirefox\/([\d.]+)/, 'Firefox'],
+            [/\bFxiOS\/([\d.]+)/, 'Firefox'],          // iOS 上的 Firefox
+            [/\bCriOS\/([\d.]+)/, 'Chrome'],           // iOS 上的 Chrome，UA 里没有 Chrome/ 只有 CriOS/
+            [/\bChrome\/([\d.]+)/, 'Chrome'],
+            // iOS 的 Safari 是 "Version/17.4 Mobile/15E148 Safari/604.1"，版本与 Safari 之间隔着 Mobile/…，
+            // 所以中间只能用 .* 兜，不能限定成数字与空白
+            [/\bVersion\/([\d.]+).*Safari/, 'Safari'],
+            [/MSIE ([\d.]+)/, 'Internet Explorer'],
+        ];
+        for (const [re, name] of rules) {
+            const m = ua.match(re);
+            if (m) return `${name} ${m[1].split('.').slice(0, 2).join('.')}`;
+        }
+        return '未知';
+    }
+
+    // 时区 → 地区：只有这张表能反映「人在哪」，navigator.language 反映的是浏览器语言。
+    // 静态站拿不到 IP 归属地，所以只覆盖常用时区，表外的交给语言地区码兜底
+    const TZ_REGION = {
+        'Asia/Shanghai': '中国', 'Asia/Chongqing': '中国', 'Asia/Urumqi': '中国',
+        'Asia/Harbin': '中国', 'Asia/Kashgar': '中国', 'PRC': '中国',
+        'Asia/Hong_Kong': '中国香港', 'Asia/Macau': '中国澳门', 'Asia/Taipei': '中国台湾',
+        'Asia/Tokyo': '日本', 'Asia/Seoul': '韩国', 'Asia/Singapore': '新加坡',
+        'Asia/Kuala_Lumpur': '马来西亚', 'Asia/Bangkok': '泰国', 'Asia/Jakarta': '印度尼西亚',
+        'Asia/Manila': '菲律宾', 'Asia/Ho_Chi_Minh': '越南', 'Asia/Kolkata': '印度',
+        'Asia/Calcutta': '印度', 'Asia/Dubai': '阿联酋', 'Asia/Riyadh': '沙特阿拉伯',
+        'Asia/Jerusalem': '以色列', 'Asia/Istanbul': '土耳其',
+        'Europe/London': '英国', 'Europe/Dublin': '爱尔兰', 'Europe/Paris': '法国',
+        'Europe/Berlin': '德国', 'Europe/Madrid': '西班牙', 'Europe/Rome': '意大利',
+        'Europe/Amsterdam': '荷兰', 'Europe/Brussels': '比利时', 'Europe/Zurich': '瑞士',
+        'Europe/Stockholm': '瑞典', 'Europe/Oslo': '挪威', 'Europe/Copenhagen': '丹麦',
+        'Europe/Helsinki': '芬兰', 'Europe/Warsaw': '波兰', 'Europe/Prague': '捷克',
+        'Europe/Vienna': '奥地利', 'Europe/Lisbon': '葡萄牙', 'Europe/Athens': '希腊',
+        'Europe/Moscow': '俄罗斯', 'Europe/Kiev': '乌克兰', 'Europe/Kyiv': '乌克兰',
+        'America/New_York': '美国', 'America/Chicago': '美国', 'America/Denver': '美国',
+        'America/Los_Angeles': '美国', 'America/Phoenix': '美国', 'America/Anchorage': '美国',
+        'Pacific/Honolulu': '美国', 'America/Toronto': '加拿大', 'America/Vancouver': '加拿大',
+        'America/Mexico_City': '墨西哥', 'America/Sao_Paulo': '巴西', 'America/Bogota': '哥伦比亚',
+        'America/Santiago': '智利', 'America/Lima': '秘鲁',
+        'America/Argentina/Buenos_Aires': '阿根廷',
+        'Australia/Sydney': '澳大利亚', 'Australia/Melbourne': '澳大利亚',
+        'Australia/Brisbane': '澳大利亚', 'Australia/Perth': '澳大利亚',
+        'Pacific/Auckland': '新西兰',
+        'Africa/Cairo': '埃及', 'Africa/Johannesburg': '南非', 'Africa/Lagos': '尼日利亚',
+        'Africa/Nairobi': '肯尼亚',
+    };
+
+    function detectRegion() {
+        let tz = '';
+        try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { tz = ''; }
+        if (TZ_REGION[tz]) return TZ_REGION[tz];
+        const code = (navigator.language || '').split('-')[1];
+        if (code) {
+            try {
+                // DisplayNames 直接给中文国名，比再抄一张国家码表省事
+                const name = new Intl.DisplayNames(['zh-CN'], { type: 'region' }).of(code.toUpperCase());
+                if (name && name !== code) return name;
+            } catch (e) { /* 老浏览器没有 DisplayNames，落到时区原文 */ }
+        }
+        return tz || '未知';
+    }
+
+    function renderEnvInfo() {
+        aboutOs.textContent = detectOs();
+        aboutDevice.textContent = detectDeviceType();
+        aboutBrowser.textContent = detectBrowser();
+        aboutRegion.textContent = detectRegion();
+    }
+
+    // 详细介绍默认收起，每次打开都回到收起态（两种文案等宽，换字不会让行内元素左右跳）
+    function setAboutExpanded(on) {
+        aboutCard.classList.toggle('is-expanded', on);
+        btnAboutToggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+        aboutToggleLabel.textContent = on ? '收起详细介绍' : '查看详细介绍';
+    }
+
+    function openAbout() {
+        closeCalendar();                   // 三个浮层互斥
+        clearTimeout(aboutHideTimer);
+        aboutHideTimer = 0;
+        aboutDate.textContent = latestDateText();
+        renderEnvInfo();
+        setAboutExpanded(false);
+        if (aboutLayer.hidden) {
+            // 调用它的菜单随后就收起并归还焦点，所以返回目标跟着菜单走
+            aboutReturnFocus = menuLayer.hidden
+                ? document.activeElement
+                : (menuReturnFocus || document.activeElement);
+            aboutLayer.hidden = false;
+        }
+        // 模态：把背后的播放器 / 列表移出 Tab 序（同时挡住 closeMenu 归还焦点那一手）
+        document.querySelector('.player-stack').inert = true;
+        void aboutLayer.offsetWidth;       // 先提交 display，再开启过渡
+        aboutLayer.classList.add('is-open');
+        aboutCard.focus({ preventScroll: true });
+    }
+
+    function closeAbout() {
+        if (aboutLayer.hidden) return;
+        aboutLayer.classList.remove('is-open');
+        document.querySelector('.player-stack').inert = false;
+        clearTimeout(aboutHideTimer);
+        aboutHideTimer = setTimeout(() => {
+            aboutHideTimer = 0;
+            aboutLayer.hidden = true;
+        }, ABOUT_HIDE_MS);
+        const back = aboutReturnFocus;
+        aboutReturnFocus = null;
+        if (back instanceof HTMLElement && back !== document.body && document.contains(back)) {
+            back.focus({ preventScroll: true });
+        }
+    }
+
+    btnAboutClose.addEventListener('click', closeAbout);
+    btnAboutToggle.addEventListener('click', () => {
+        setAboutExpanded(!aboutCard.classList.contains('is-expanded'));
+    });
+    // 点卡片外的空白收起
+    aboutLayer.addEventListener('pointerdown', (e) => {
+        if (e.target === aboutLayer) { e.preventDefault(); closeAbout(); }
+    });
 
     /* ---------------- 曲目日历 ----------------
        行内日期唤出。范围每次打开时按「清单里的日期 + 当前时间」实时算：
