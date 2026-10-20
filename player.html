@@ -66,37 +66,58 @@
                         </div>
 
                         <div class="controls">
-                            <button class="skip-btn ripple" id="btnPrev" type="button" aria-label="上一曲">
-                                <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <g class="icon-track"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></g>
-                                    <g class="icon-seek">
-                                        <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
-                                        <path d="M10.89 16h-.85v-3.26l-1.01.31v-.69l1.77-.63h.09V16zm4.28-1.76c0 .32-.03.6-.1.82s-.17.42-.29.57-.28.26-.45.33-.37.1-.59.1-.41-.03-.59-.1-.33-.18-.46-.33-.23-.34-.3-.57-.11-.5-.11-.82v-.74c0-.32.03-.6.1-.82s.17-.42.29-.57.28-.26.45-.33.37-.1.59-.1.41.03.59.1.33.18.46.33.23.34.3.57.11.5.11.82v.74zm-.85-.86c0-.19-.01-.35-.04-.48s-.07-.23-.12-.31-.11-.14-.19-.17-.16-.05-.25-.05-.18.02-.25.05-.14.09-.19.17-.09.18-.12.31-.04.29-.04.48v.97c0 .19.01.35.04.48s.07.24.12.32.11.14.19.17.16.05.25.05.18-.02.25-.05.14-.09.19-.17.09-.19.11-.32.04-.29.04-.48v-.97z"/>
-                                    </g>
-                                </svg>
-                            </button>
+                            <!-- 两侧为「更多控件」开关唤出的附加按钮（关着时不占位）：
+                                 左 = 投稿，右 = 播放列表 -->
+                            <div class="controls-side controls-side--lead">
+                                <button class="skip-btn ctl-extra ripple" id="btnSubmit" type="button" aria-label="投稿">
+                                    <!-- Material Symbols: send（实心 · 圆角） -->
+                                    <svg class="skip-icon" viewBox="0 -960 960 960" aria-hidden="true">
+                                        <path d="M176-183q-20 8-38-3.5T120-220v-180l320-80-320-80v-180q0-22 18-33.5t38-3.5l616 260q25 11 25 37t-25 37L176-183Z"/>
+                                    </svg>
+                                </button>
+                            </div>
 
-                            <button class="fab ripple" id="btnPlay" type="button" aria-label="播放">
-                                <span class="ripple-clip" aria-hidden="true"></span>
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
-                                    <g class="icon-pause">
-                                        <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
-                                        <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
-                                    </g>
-                                </svg>
-                                <span class="fab-ring" aria-hidden="true"></span>
-                            </button>
+                            <div class="controls-main">
+                                <button class="skip-btn ripple" id="btnPrev" type="button" aria-label="上一曲">
+                                    <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <g class="icon-track"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></g>
+                                        <g class="icon-seek">
+                                            <path d="M11.99 5V1l-5 5 5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6h-2c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                                            <path d="M10.89 16h-.85v-3.26l-1.01.31v-.69l1.77-.63h.09V16zm4.28-1.76c0 .32-.03.6-.1.82s-.17.42-.29.57-.28.26-.45.33-.37.1-.59.1-.41-.03-.59-.1-.33-.18-.46-.33-.23-.34-.3-.57-.11-.5-.11-.82v-.74c0-.32.03-.6.1-.82s.17-.42.29-.57.28-.26.45-.33.37-.1.59-.1.41.03.59.1.33.18.46.33.23.34.3.57.11.5.11.82v.74zm-.85-.86c0-.19-.01-.35-.04-.48s-.07-.23-.12-.31-.11-.14-.19-.17-.16-.05-.25-.05-.18.02-.25.05-.14.09-.19.17-.09.18-.12.31-.04.29-.04.48v.97c0 .19.01.35.04.48s.07.24.12.32.11.14.19.17.16.05.25.05.18-.02.25-.05.14-.09.19-.17.09-.19.11-.32.04-.29.04-.48v-.97z"/>
+                                        </g>
+                                    </svg>
+                                </button>
 
-                            <button class="skip-btn ripple" id="btnNext" type="button" aria-label="下一曲">
-                                <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <g class="icon-track"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></g>
-                                    <g class="icon-seek">
-                                        <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z"/>
-                                        <path d="M10.86 15.94v-4.27h-.09L9 12.3v.69l1.01-.31v3.26zm1.39-2.5v.74c0 1.9 1.31 1.82 1.44 1.82.14 0 1.44.09 1.44-1.82v-.74c0-1.9-1.31-1.82-1.44-1.82-.14 0-1.44-.09-1.44 1.82zm2.04-.12v.97c0 .77-.21 1.03-.59 1.03s-.6-.26-.6-1.03v-.97c0-.75.22-1.01.59-1.01.38-.01.6.26.6 1.01z"/>
-                                    </g>
-                                </svg>
-                            </button>
+                                <button class="fab ripple" id="btnPlay" type="button" aria-label="播放">
+                                    <span class="ripple-clip" aria-hidden="true"></span>
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path class="icon-play" d="M8.4 5.6v12.8a1.2 1.2 0 0 0 1.83 1.02l10.1-6.4a1.2 1.2 0 0 0 0-2.04L10.23 4.58A1.2 1.2 0 0 0 8.4 5.6Z"/>
+                                        <g class="icon-pause">
+                                            <rect x="6.6" y="5" width="4.1" height="14" rx="1.5"/>
+                                            <rect x="13.3" y="5" width="4.1" height="14" rx="1.5"/>
+                                        </g>
+                                    </svg>
+                                    <span class="fab-ring" aria-hidden="true"></span>
+                                </button>
+
+                                <button class="skip-btn ripple" id="btnNext" type="button" aria-label="下一曲">
+                                    <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <g class="icon-track"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></g>
+                                        <g class="icon-seek">
+                                            <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z"/>
+                                            <path d="M10.86 15.94v-4.27h-.09L9 12.3v.69l1.01-.31v3.26zm1.39-2.5v.74c0 1.9 1.31 1.82 1.44 1.82.14 0 1.44.09 1.44-1.82v-.74c0-1.9-1.31-1.82-1.44-1.82-.14 0-1.44-.09-1.44 1.82zm2.04-.12v.97c0 .77-.21 1.03-.59 1.03s-.6-.26-.6-1.03v-.97c0-.75.22-1.01.59-1.01.38-.01.6.26.6 1.01z"/>
+                                        </g>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="controls-side controls-side--trail">
+                                <button class="skip-btn ctl-extra ripple" id="btnPlaylistToggle" type="button" aria-label="打开播放列表" aria-expanded="false">
+                                    <svg class="skip-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M3 6h12v2H3zM3 11h12v2H3zM3 16h8v2H3zM17 9v8l5-4z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </div>
@@ -184,6 +205,13 @@
     <noscript><p class="noscript">需要启用 JavaScript 才能使用播放器。</p></noscript>
 </main>
 
+<!-- 播放列表浮层：主界面与景览共用。点播控两侧的播放列表按钮唤出，
+     卡片整块搬到屏幕正中间；再点按钮、点卡片头部或点空白都能关。
+     放在日历之前：同层级时由日历等后置浮层压在上面 -->
+<div class="playlist-overlay" id="playlistOverlay">
+    <div class="playlist-panel" id="playlistPanel"></div>
+</div>
+
 <!-- 曲目日历：点播放列表行左侧的日期唤出。范围实时算：
      下界 = 清单里最早的曲目月，上界 = max(最新曲目月, 当月) -->
 <div class="cal-layer" id="calLayer" hidden>
@@ -251,6 +279,18 @@
             </svg>
             <span class="menu-label">显示上下曲</span>
         </button>
+        <button class="menu-item" type="button" role="menuitemcheckbox" data-pref="more" aria-checked="false">
+            <svg class="menu-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span class="menu-label">显示更多控件</span>
+        </button>
+        <button class="menu-item" type="button" role="menuitemcheckbox" data-pref="scene" aria-checked="false">
+            <svg class="menu-check" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            <span class="menu-label">景览模式</span>
+        </button>
         <div class="menu-divider" role="separator"></div>
         <button class="menu-item" type="button" role="menuitem" data-act="submit">
             <!-- Material Symbols: send（实心 · 圆角） -->
@@ -286,10 +326,15 @@
         <dl class="about-meta">
             <div class="about-meta-row">
                 <dt>版本号</dt>
-                <dd>1.5.2</dd>
+                <dd>1.6.0</dd>
             </div>
             <div class="about-meta-row">
-                <dt>更新日期</dt>
+                <dt>页面更新日期</dt>
+                <dd>2026年10月19日</dd>
+            </div>
+            
+            <div class="about-meta-row">
+                <dt>音频更新日期</dt>
                 <dd id="aboutDate">--</dd>
             </div>
             <div class="about-meta-row">
@@ -324,6 +369,32 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- 景览模式：播放器的另一种视图形态 —— 整屏铺当前曲目封面当壁纸（不另设中部大封面），
+     上方是锁屏时钟，底部是一块无卡片的承托区：曲目信息 + 进度条 + 播控
+     （后两者由 Script/player.js 在主播放器与这里之间整块搬移）。
+     由「景览模式」开关切换（开关状态持久化），不是独立浮层 -->
+<div class="scene-layer" id="sceneLayer">
+    <section class="scene" id="scene" aria-label="景览模式">
+        <div class="scene-bg" id="sceneBg" aria-hidden="true"></div>
+        <div class="scene-scrim" aria-hidden="true"></div>
+
+        <div class="scene-inner">
+            <header class="scene-top">
+                <p class="scene-date" id="sceneDate">—</p>
+                <p class="scene-clock" id="sceneClock">--:--</p>
+            </header>
+
+            <!-- 曲目信息与播控同处底部：信息在框内最上方，其后是进度条与播控 -->
+            <div class="scene-slot" id="sceneSlot">
+                <div class="scene-meta-text">
+                    <h2 class="scene-title" id="sceneTitle">Name</h2>
+                    <p class="scene-artist" id="sceneArtist">Artist</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 </body>
 </html>

@@ -12,9 +12,6 @@
     const SITE_BASE = 'https://rudan177.github.io/OOOInterface/';
     const LOG_BASE = `${SITE_BASE}images/MusicLog/`;
     const META_URL = `${LOG_BASE}music.json`;
-    // 固定首曲：wow.mp3 排在整个列表最前。文件名不变、内容可整首替换，
-    // 所以它没有清单元数据，曲名 / 歌手以文件内 ID3 为准
-    const WOW_URL = `${SITE_BASE}images/wow.mp3`;
     // 每次打开页面自动加时间戳参数穿透缓存，确保拿到刚替换的新文件
     const CACHE_BUST = Date.now();
 
@@ -26,22 +23,8 @@
     // 右键菜单「投稿」跳转的外部表单
     const SUBMIT_FORM_URL = 'https://shimo.im/forms/5bqndOGJndsxV4Ay/fill';
 
-    // 兜底元数据：仅在 ID3 也解析不出时展示（固定首曲的初始占位）
+    // 兜底元数据：清单未到或为空时的占位
     const FALLBACK_META = { title: 'OOOInterface', artist: 'ByRUDAN' };
-
-    // 固定首曲条目：wow.mp3 永远排在最前。
-    // wow.mp3 就是清单里「最新一天」那一份文件（内容与元数据都相同），
-    // 所以最新一条并入这里、不再单列，避免同一首出现两次；
-    // 它没有自己的类型 / 日期，这些字段从并入的那条继承，标题最终以文件内 ID3 为准（pinned）
-    const makeWowTrack = (newest) => ({
-        name: newest ? newest.name : FALLBACK_META.title,
-        artist: newest ? newest.artist : FALLBACK_META.artist,
-        date: newest ? newest.date : '',
-        official: newest ? newest.official : null,   // null = 清单没拿到，类型未知
-        duration: NaN,
-        url: WOW_URL,
-        pinned: true,
-    });
 
     const withCache = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${CACHE_BUST}`;
 
@@ -99,6 +82,24 @@
     const aboutDevice = $('aboutDevice');
     const aboutBrowser = $('aboutBrowser');
     const aboutRegion = $('aboutRegion');
+    const sceneLayer = $('sceneLayer');
+    const sceneEl = $('scene');
+    const sceneBg = $('sceneBg');
+    const sceneDate = $('sceneDate');
+    const sceneClock = $('sceneClock');
+    const sceneSlot = $('sceneSlot');
+    const sceneTitle = $('sceneTitle');
+    const sceneArtist = $('sceneArtist');
+    // 播放列表浮层：主界面与景览共用的居中容器
+    const playlistOverlay = $('playlistOverlay');
+    const playlistPanel = $('playlistPanel');
+    // 「显示更多控件」唤出的两颗附加按钮：左投稿、右播放列表
+    const btnSubmit = $('btnSubmit');
+    const btnPlaylistToggle = $('btnPlaylistToggle');
+    // 景览模式要搬移的对象：主播放器的进度区与播控，进出时整块搬进 / 搬回
+    const panelEl = document.querySelector('.panel');
+    const progressZone = document.querySelector('.progress-zone');
+    const controlsEl = document.querySelector('.controls');
 
     /* ---------------- 状态 ---------------- */
     let duration = 0;
@@ -111,11 +112,12 @@
     let currentIndex = -1;
     let coverToken = 0;          // 切换曲目时作废旧请求的回填
     let wantPlaying = false;     // 用户意图播放态（换曲时用它决定是否续播）
+    let sceneOpen = false;       // 景览模式是否开启
     const darkMql = window.matchMedia('(prefers-color-scheme: dark)');
     const reduceMotionMql = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    /* 右键菜单的三个显示开关；默认歌词关、播放列表与上下曲开 */
-    const prefs = { lyrics: false, playlist: true, trackNav: true };
+    /* 右键菜单的五个显示开关；默认歌词关，播放列表 / 上下曲开，景览模式与更多控件关 */
+    const prefs = { lyrics: false, playlist: true, trackNav: true, scene: false, more: false };
     let lyrics = [];     // 当前曲目的歌词行 [{ t: 秒, text }]，按时间升序
     let lyricRaw = '';   // 当前曲目 USLT 的 LRC 原文，供「下载歌词」去时间戳导出
     let lyricIdx = -1;   // 已显示的歌词行下标；-1 = 还没到第一句（回落歌手名）
@@ -465,8 +467,8 @@
         audio.load();
         if (wantPlaying) requestPlay();
         updateCurrentTrack(false);
-        // 清单曲目：文字以 music.json 为准；固定首曲没有清单元数据，以 ID3 为准
-        loadMetadata(t, !!t.pinned);
+        // 文字以 music.json 为准；ID3 只用来取封面与歌词
+        loadMetadata(t);
     }
 
     function nextTrack() {
@@ -498,6 +500,7 @@
             else if (e.key === 'Tab') btnAboutClose.focus();
             return;
         }
+        // 「景览模式」只是另一种视图形态，不受 Esc 管辖；下面这些播放快捷键照常生效
         const t = e.target;
         if (t instanceof Element && t.closest('button, [role="slider"], input, textarea, select')) return;
         if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); togglePlay(); }
@@ -712,6 +715,7 @@
         updateTitleMarquee();
         document.title = `${meta.title} · ${meta.artist} — 音乐播放器`;
         applyArtistText();
+        syncSceneMeta();            // 景览模式的曲目信息同步
     }
 
     // 歌手位置：正在播放且开着歌词、且已有当前句时显示歌词，否则回落歌手名。
@@ -769,6 +773,7 @@
     function applyCover(url) {
         if (coverObjectUrl) { try { URL.revokeObjectURL(coverObjectUrl); } catch (_) { /* 忽略 */ } }
         coverObjectUrl = url;
+        syncSceneCover();           // 景览模式的壁纸 / 缩略图跟着封面走
         fadeMiniCover(url);
         fadeCover(url, `专辑封面：${currentMeta.title}`, () => {
             coverEl.classList.add('has-img');
@@ -785,6 +790,13 @@
         '--surface', '--surface-container', '--surface-container-high', '--surface-container-highest',
         '--on-surface', '--on-surface-variant',
     ];
+    // 景览模式恒暗，强调色要用「暗色调色板」那一组（见 applyPalette）：
+    // 浅色模式下 --primary 是为浅底调的深色，直接用到深色面板上会发闷。
+    // 左为景览命名空间令牌，右为调色板里的来源角色
+    const SCENE_ACCENT_MAP = [
+        ['--scene-primary', '--primary'],
+        ['--scene-on-primary', '--on-primary'],
+    ];
     const themeColorMetas = [...document.querySelectorAll('meta[name="theme-color"]')];
     const defaultThemeColors = themeColorMetas.map((m) => m.getAttribute('content'));
 
@@ -792,6 +804,7 @@
         if (coverObjectUrl) { try { URL.revokeObjectURL(coverObjectUrl); } catch (_) { /* 忽略 */ } }
         coverObjectUrl = null;
         coverMime = '';
+        syncSceneCover();           // 景览模式退回兜底壁纸
         coverEl.classList.remove('has-img');
         ambientImg.classList.remove('is-visible');
         ambientImg.style.backgroundImage = '';   // 别留着已撤销 blob URL 的引用
@@ -799,6 +812,7 @@
         fadeMiniCover.reset();
         palette = null;
         THEME_KEYS.forEach((k) => document.documentElement.style.removeProperty(k));
+        SCENE_ACCENT_MAP.forEach(([k]) => document.documentElement.style.removeProperty(k));
         themeColorMetas.forEach((m, i) => m.setAttribute('content', defaultThemeColors[i]));
     }
 
@@ -941,10 +955,9 @@
     }
 
     /**
-     * 读取曲目 ID3：清单曲目只取封面（文本以 music.json 为准），
-     * 固定首曲不在清单里，连文本一起取。
+     * 读取曲目 ID3：文字以 music.json 为准，这里只取封面与内嵌歌词。
      */
-    async function loadMetadata(track, applyText) {
+    async function loadMetadata(track) {
         const token = ++coverToken;
         try {
             const u8 = await fetchId3(withCache(track.url));
@@ -952,17 +965,6 @@
             const info = u8 && parseId3(u8);
             if (!info) return;
 
-            if (applyText) {
-                const title = info.title || track.name;
-                const artist = info.artist || track.artist;
-                track.name = title;
-                track.artist = artist;
-                // 只有真的解析出文本帧才算「已定稿」；标签存在但没有 TIT2/TPE1 时
-                // 不能打这个标记，否则清单里的真实曲名会被兜底占位符顶掉
-                track.id3Text = !!(info.title || info.artist);
-                applyMeta({ title, artist });
-                updateTrackRowText(currentIndex);
-            }
             // 歌词来自 mp3 内嵌的 USLT 帧（LRC 文本），不额外发请求
             lyricRaw = info.lyrics || '';
             lyrics = parseLrc(lyricRaw);
@@ -1128,6 +1130,9 @@
         for (const [k, v] of Object.entries(vars)) {
             document.documentElement.style.setProperty(k, v);
         }
+        // 景览模式的强调色固定取暗色调色板：它恒暗，不该跟着系统明暗换一组
+        SCENE_ACCENT_MAP.forEach(([k, src]) =>
+            document.documentElement.style.setProperty(k, palette.dark[src]));
         // 同步浏览器地址栏主题色
         const surfaces = { light: palette.light['--surface'], dark: palette.dark['--surface'] };
         themeColorMetas.forEach((m) => {
@@ -1140,7 +1145,7 @@
 
     /* ---------------- 播放列表 ---------------- */
     function isPlaylistOpen() {
-        return document.body.classList.contains('list-open');
+        return document.body.classList.contains('playlist-open');
     }
 
     function renderPlaylist() {
@@ -1206,19 +1211,7 @@
         return li;
     }
 
-    // ID3 解析出文本后回填列表行（仅固定首曲会用到：它的文本不在清单里）。
-    // 按索引定位而不是对象引用：列表合并时换了对象的话，indexOf 会得到 -1，
-    // 回填会静默失效
-    function updateTrackRowText(index) {
-        const t = playlist[index];
-        const row = playlistList.querySelectorAll('.track-row')[index];
-        if (!row || !t) return;
-        row.querySelector('.track-name').textContent = t.name;
-        row.querySelector('.track-artist').textContent = t.artist;
-    }
-
-    // 清单没给时长时（固定首曲就是这种）用音频真实时长补齐列表显示；
-    // 清单已给时长的曲目保持原样，不用文件时长覆盖。
+    // 清单没给时长时用音频真实时长补齐列表显示；
     // 时长可能早于列表渲染就绪，所以 renderPlaylist 里也会兜一次
     function syncCurrentDuration() {
         const t = playlist[currentIndex];
@@ -1273,35 +1266,14 @@
     }
 
     async function loadPlaylist() {
-        // 固定首曲的地址是常量（WOW_URL），不必等清单回来才知道：
-        // 直接起播，让音源请求与清单请求并行，
-        // 省掉「等清单返回后才开始取音频」这一个串行往返。
-        // 列表先不画（画了会短暂显示「1 首」），等清单到达一次成型；
-        // 期间 loadTrack 会即时更新播放器界面，观感不受影响。
-        playlist = [makeWowTrack(null)];
-        loadTrack(0, false);
-
-        const fromList = await fetchMeta();
-        const byNewest = fromList.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
-        const newest = byNewest[0];
-        // 就地更新固定首曲对象、保持引用不变：在途的 ID3 文本回填与音频时长回填
-        // 都持有这个对象（按索引写入 playlist[0]），换成新对象会让它们全部落空
-        const first = playlist[0];
-        if (newest) {
-            // 文字若已由 ID3 定稿，保留 ID3 的结果
-            // （wow.mp3 不在清单里，文件内的标签才是唯一事实来源）
-            if (!first.id3Text) {
-                first.name = newest.name;
-                first.artist = newest.artist;
-            }
-            first.date = newest.date;
-            first.official = newest.official;
-        }
-        playlist.length = 0;
-        playlist.push(first, ...byNewest.slice(1));
+        // 全部曲目（含最新一天）一律走 MusicLog/mp3 下的分轨文件，不再读 wow.mp3。
+        // 清单按日期倒序：最新一天排最前
+        playlist = (await fetchMeta())
+            .slice()
+            .sort((a, b) => String(b.date).localeCompare(String(a.date)));
         renderPlaylist();
-        // 首行文字此时才定稿（此前是占位或 ID3 值），同步到正在播放的标题
-        if (currentIndex === 0) applyMeta({ title: first.name, artist: first.artist });
+        if (!playlist.length) return;   // 清单没拿到：保留兜底文案与空列表
+        loadTrack(0, false);
     }
 
     /* ---------------- 形态高度量测 ----------------
@@ -1311,6 +1283,7 @@
        量测期间关掉过渡，尺寸更新本身不该被当成一次形态动画。 */
     const fullInner = document.querySelector('.full-inner');
     const playlistCard = $('playlistCard');
+    const playlistHost = playlistCard.parentElement;   // 主界面栈里的原位置，浮层关闭后搬回
 
     function measureMorphHeights() {
         root.classList.add('no-ease');
@@ -1453,23 +1426,49 @@
         watchCoverFlight();
     }
 
-    /* ---------------- 播放列表开关 ---------------- */
+    /* ---------------- 播放列表开关 ----------------
+       列表整块搬进屏幕居中的浮层，主界面与景览共用同一套开合：
+       打开时播放器保持原样（不再收成胶囊），背景只做压暗 */
+    let playlistMoveTimer = 0;
+
     function setPlaylistOpen(open) {
-        document.body.classList.toggle('list-open', open);
-        btnPlaylist.setAttribute('aria-expanded', open ? 'true' : 'false');
-        btnPlaylist.setAttribute('aria-label', open ? '收起播放列表' : '打开播放列表');
+        open = !!open;
+        clearTimeout(playlistMoveTimer);
+        if (open) playlistPanel.appendChild(playlistCard);
+        document.body.classList.toggle('playlist-open', open);
+        // 头部与播控里的按钮是同一个开合的两个入口，状态一起同步
+        [btnPlaylist, btnPlaylistToggle].forEach((btn) => {
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            btn.setAttribute('aria-label', open ? '收起播放列表' : '打开播放列表');
+        });
         // 折叠的内容不可聚焦，防止 Tab / 点击落到看不见的控件上
-        playerFull.inert = open;
-        playerMini.inert = !open;
         playlistBody.inert = !open;
-        // 与卡片形变同帧起飞；两端点都是常量，先切后飞不影响几何
-        flyCover(open);
-        // 等形变结束后再把当前曲目滚进视野，避免动画中被强制滚动
-        if (open) setTimeout(() => updateCurrentTrack(true), 680);
+        // 浮层打开时背后的播放器整层退出 Tab 序（景览里播控已搬出卡片，另算一次）
+        root.inert = open;
+        sceneEl.inert = open;
+        if (open) {
+            measureMorphHeights();      // 卡片刚可见，重新量一次列表展开高度
+            // 等展开结束后再把当前曲目滚进视野，避免动画中被强制滚动
+            setTimeout(() => updateCurrentTrack(true), 680);
+        } else {
+            // 浮层淡出走完再搬回栈里，收起过程不会突然跳位；
+            // 搬回时关掉卡片自身的入场动画，避免每次关闭都重新淡入一遍
+            playlistMoveTimer = setTimeout(() => {
+                if (isPlaylistOpen()) return;
+                playlistCard.style.animation = 'none';
+                playlistHost.appendChild(playlistCard);
+            }, 260);
+        }
     }
 
     btnPlaylist.addEventListener('click', () => setPlaylistOpen(!isPlaylistOpen()));
     btnMiniOpen.addEventListener('click', () => setPlaylistOpen(false));
+
+    // 点浮层空白（卡片以外）也能关
+    playlistOverlay.addEventListener('click', (e) => {
+        if (e.target.closest && e.target.closest('#playlistCard')) return;
+        setPlaylistOpen(false);
+    });
 
     /* ---------------- 显示开关（右键菜单三项 + 持久化） ---------------- */
     const PREFS_KEY = 'player.prefs.v1';
@@ -1522,6 +1521,19 @@
         prefs.trackNav = !!on;
         savePrefs();
         applyTrackNav();
+        syncMenu();
+    }
+
+    /* 更多控件：打开后播控两侧多出「投稿」与「播放列表」两颗按钮。
+       只切一个 body 类，两颗按钮的显示与位置全部交给 CSS */
+    function applyMoreControls() {
+        document.body.classList.toggle('more-ctl', prefs.more);
+    }
+
+    function setMoreControls(on) {
+        prefs.more = !!on;
+        savePrefs();
+        applyMoreControls();
         syncMenu();
     }
 
@@ -1588,12 +1600,12 @@
 
     /* ---------------- 右键菜单 ---------------- */
     const menuItems = [...playerMenu.querySelectorAll('.menu-item')];
-    const PREF_APPLY = { lyrics: setLyrics, playlist: setPlaylistVisible, trackNav: setTrackNav };
+    const PREF_APPLY = { lyrics: setLyrics, playlist: setPlaylistVisible, trackNav: setTrackNav, scene: setSceneMode, more: setMoreControls };
     const MENU_ACTION = { cover: downloadCover, lyrics: downloadLyrics, submit: openSubmitForm, about: openAbout };
     const MENU_HIDE_MS = 260;     // 与 .menu 收起过渡同长，收起动画走完再真正隐藏
     let menuHideTimer = 0;
     let menuReturnFocus = null;
-    let menuDrag = null;      // 长按唤出后仍按着的那根手指 { id, touch }，用来支持「不松手拖到某一项」
+    let menuDrag = null;      // 长按唤出后仍按着的那根手指 { id, touch, x, y, moved }，用来区分「原地松手」与「拖到某一项」
     let dragItem = null;      // 手指当前划过、正在高亮的菜单项（禁用项不会落到这里）
     let dragHit = null;       // 手指压着的那个菜单项（可能被禁用），松手时据此决定做什么
 
@@ -1624,6 +1636,12 @@
     const setMenuDragging = (on) => document.body.classList.toggle('menu-dragging', on);
 
     function updateDragHit(x, y) {
+        // 手指离开长按点超过阈值才算「在拖」。原地松手 = 只是唤出菜单，
+        // 菜单要留着（与拖到某一项 / 拖到空白是两条不同的路径）。
+        if (menuDrag && !menuDrag.moved &&
+            Math.hypot(x - menuDrag.x, y - menuDrag.y) > LONG_PRESS_MOVE) {
+            menuDrag.moved = true;
+        }
         dragHit = itemAtPoint(x, y);
         setDragItem(dragHit);
     }
@@ -1745,13 +1763,17 @@
     /* 拖出去即另存为：封面、音频、链接一律禁止起拖 */
     document.addEventListener('dragstart', (e) => e.preventDefault());
 
+    /* 唤出菜单的三个宿主：主播放器卡片与景览层。
+       景览模式时卡片已移出布局（display:none），事件到不了它，只能由景览层接住 */
+    const MENU_TRIGGERS = [root, sceneEl];
+
     // 桌面右键
-    root.addEventListener('contextmenu', (e) => {
+    function onMenuContextMenu(e) {
         e.preventDefault();
-        const r = root.getBoundingClientRect();
-        // 键盘（Shift+F10 / 菜单键）触发时坐标是 0,0，那就锚到卡片中间
+        const r = e.currentTarget.getBoundingClientRect();
+        // 键盘（Shift+F10 / 菜单键）触发时坐标是 0,0，那就锚到这一层中间
         openMenu(e.clientX || r.left + r.width / 2, e.clientY || r.top + r.height / 2);
-    });
+    }
 
     /* 触屏长按唤出：iOS 不会派发 contextmenu，只能自己判定。
        按下后移动超过阈值（即开始滚动）就取消 */
@@ -1761,7 +1783,7 @@
     let pressFrom = null;
     let suppressClick = false;   // 长按唤出后，抑制松手时落到按钮上的那一次 click
 
-    root.addEventListener('pointerdown', (e) => {
+    function onMenuPointerDown(e) {
         if (e.pointerType === 'mouse' || e.button !== 0) return;
         suppressClick = false;
         pressFrom = { x: e.clientX, y: e.clientY };
@@ -1770,25 +1792,28 @@
             pressTimer = 0;
             suppressClick = true;
             openMenu(e.clientX, e.clientY);
-            // 菜单开了但手指还按着：接着移到哪一项就高亮哪一项，松手即执行
-            menuDrag = { id: e.pointerId, touch: e.pointerType === 'touch' };
+            // 菜单开了但手指还按着：接着移到哪一项就高亮哪一项，松手即执行；
+            // 若原地不动就松手，则视为「只是唤出菜单」，菜单留着不收起
+            menuDrag = { id: e.pointerId, touch: e.pointerType === 'touch',
+                         x: e.clientX, y: e.clientY, moved: false };
             if (menuDrag.touch) attachDragTouch();
             setMenuDragging(true);
             updateDragHit(e.clientX, e.clientY);
         }, LONG_PRESS_MS);
-    });
+    }
 
-    root.addEventListener('pointermove', (e) => {
+    function onMenuPointerMove(e) {
         if (!pressTimer || !pressFrom) return;
         if (Math.hypot(e.clientX - pressFrom.x, e.clientY - pressFrom.y) > LONG_PRESS_MOVE) {
             clearTimeout(pressTimer);
             pressTimer = 0;
         }
-    });
+    }
 
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
-        root.addEventListener(type, () => { clearTimeout(pressTimer); pressTimer = 0; });
-    });
+    function onMenuPointerEnd() {
+        clearTimeout(pressTimer);
+        pressTimer = 0;
+    }
 
     /* 唤出后不松手继续拖到目标项。
        坑：手机上一动超过 ~10px，浏览器就判定成滚动并派发 pointercancel，
@@ -1834,6 +1859,7 @@
     function finishMenuDrag(commit) {
         if (!menuDrag) return;
         const wasTouch = menuDrag.touch;
+        const moved = menuDrag.moved;
         menuDrag = null;
         setMenuDragging(false);
         if (wasTouch) detachDragTouch();
@@ -1841,8 +1867,10 @@
         dragHit = null;
         setDragItem(null);
         if (!commit) return;      // 手势被系统接管，菜单留着，只是不高亮了
+        // 原地松手（没拖动）：只是长按唤出了菜单，菜单留着，什么也不执行
+        if (!moved) { setTimeout(() => { suppressClick = false; }, 0); return; }
         if (hit && !hit.disabled) hit.click();
-        else if (!hit) closeMenu();   // 落在空白处：跟点空白一个意思
+        else if (!hit) closeMenu();   // 拖到空白处松手：跟点空白一个意思
         // 落在禁用项上：什么都不做，菜单也留着
         // 这一次 click 仍要由 suppressClick 吞掉（手指可能又拖回卡片上了），
         // 但得等它派发完再复位，否则拖回按钮上松手会真的把按钮按下去
@@ -1856,12 +1884,23 @@
         if (menuDrag && !menuDrag.touch) finishMenuDrag(false);
     }, true);
 
-    root.addEventListener('click', (e) => {
+    function onMenuClickSuppress(e) {
         if (!suppressClick) return;
         suppressClick = false;
         e.preventDefault();
         e.stopPropagation();
-    }, true);
+    }
+
+    // 键盘（Shift+F10 / 菜单键）触发的右键落在哪一层，就由哪一层接住
+    MENU_TRIGGERS.forEach((el) => {
+        el.addEventListener('contextmenu', onMenuContextMenu);
+        el.addEventListener('pointerdown', onMenuPointerDown);
+        el.addEventListener('pointermove', onMenuPointerMove);
+        el.addEventListener('click', onMenuClickSuppress, true);
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+            el.addEventListener(type, onMenuPointerEnd);
+        });
+    });
 
     /* ---------------- 关于 ----------------
        菜单里的一次性动作：菜单收起后弹出模态卡片（背景模糊 + 放大弹出）。
@@ -2060,6 +2099,87 @@
     aboutLayer.addEventListener('pointerdown', (e) => {
         if (e.target === aboutLayer) { e.preventDefault(); closeAbout(); }
     });
+
+    /* ---------------- 景览模式 ----------------
+       播放器的第二种视图形态（锁屏样式）：封面铺底作壁纸、顶部时钟、底部一条无卡片的
+       承托区（曲目信息 + 进度条 + 播控）。它不是模态浮层 —— 进出由 body.scene-open
+       一个类驱动，进出时把 .progress-zone / .controls 整块搬移，开关状态写进 prefs，
+       下次打开默认回到这里。播放列表不随视图搬移：它统一走屏幕居中的浮层 */
+    const SCENE_WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+    // 搬进 / 搬回的固定顺序：进度条在前、播控在后（排在 .scene-slot 里已有的曲目信息之后）
+    const SCENE_SLOT_ORDER = [progressZone, controlsEl];
+    let sceneClockTimer = 0;
+    let sceneCoverUrl = '';         // 已铺到景览的壁纸封面 URL，用来去重
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+
+    // 每秒刷新：分钟跳变、跨天都能自己跟上（重写两个短字符串成本可忽略）
+    function renderSceneClock() {
+        const d = new Date();
+        sceneClock.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        sceneDate.textContent = `${d.getMonth() + 1}月${d.getDate()}日 星期${SCENE_WEEK[d.getDay()]}`;
+    }
+
+    function startSceneClock() {
+        renderSceneClock();
+        clearInterval(sceneClockTimer);
+        sceneClockTimer = setInterval(renderSceneClock, 1000);
+    }
+
+    function stopSceneClock() {
+        clearInterval(sceneClockTimer);
+        sceneClockTimer = 0;
+    }
+
+    // 壁纸只铺整屏那一层（不再另设中部大封面）；无封面时退回 CSS 里的兜底渐变
+    function syncSceneCover() {
+        if (coverObjectUrl === sceneCoverUrl) return;   // 同一张封面不重复写
+        sceneCoverUrl = coverObjectUrl || '';
+        sceneBg.style.backgroundImage = sceneCoverUrl ? `url("${sceneCoverUrl}")` : '';
+    }
+
+    function syncSceneMeta() {
+        sceneTitle.textContent = currentMeta.title;
+        sceneArtist.textContent = currentMeta.artist;
+    }
+
+    /* 进出的唯一开关：菜单里的勾选项走它。
+       进入 = 把进度区与播控搬进 .scene-slot；退出 = 各自按原位置搬回。
+       视觉切换全部交给 body.scene-open 上的 CSS 过渡 */
+    function setSceneMode(on) {
+        on = !!on;
+        if (prefs.scene !== on) { prefs.scene = on; savePrefs(); }
+        if (on === sceneOpen) { syncMenu(); return; }
+        sceneOpen = on;
+
+        // 切换视图时把播放列表浮层收掉，免得它跨在两个视图之间
+        if (isPlaylistOpen()) setPlaylistOpen(false);
+
+        if (on) {
+            syncSceneCover();
+            syncSceneMeta();
+            startSceneClock();
+            SCENE_SLOT_ORDER.forEach((el) => sceneSlot.appendChild(el));
+            document.body.classList.add('scene-open');
+        } else {
+            stopSceneClock();
+            SCENE_SLOT_ORDER.forEach((el) => panelEl.appendChild(el));
+            document.body.classList.remove('scene-open');
+        }
+        // 滑条宽度随宿主变化：重新量轨道，再按当前进度写一次手柄位置
+        measureTrack();
+        renderProgress(audio.currentTime);
+        syncMenu();                     // 勾选态跟着视图态走
+    }
+
+    /* ---------------- 更多控件（投稿 / 播放列表） ----------------
+       由右键菜单的「显示更多控件」唤出，落在播控行的左右两端 */
+    btnSubmit.addEventListener('click', openSubmitForm);
+    attachRipple(btnSubmit);
+
+    // 播放列表按钮：主界面与景览同一套开合 —— 点一下居中出现，再点收起
+    btnPlaylistToggle.addEventListener('click', () => setPlaylistOpen(!isPlaylistOpen()));
+    attachRipple(btnPlaylistToggle);
 
     /* ---------------- 曲目日历 ----------------
        行内日期唤出。范围每次打开时按「清单里的日期 + 当前时间」实时算：
@@ -2445,7 +2565,9 @@
     applyMeta({ ...FALLBACK_META });
     syncMenu();
     applyTrackNav();
+    applyMoreControls();
     applyPlaylistVisible();
+    setSceneMode(prefs.scene);   // 上次退出时若停在景览模式，这次直接回到这里
     playerMini.inert = true;
     playlistBody.inert = true;
     measureMorphHeights();

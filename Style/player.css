@@ -732,13 +732,62 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
     user-select: none;
 }
 
-/* ---------- 控制区 ---------- */
+/* ---------- 控制区 ----------
+   三栏网格：左附加 / 播控主体 / 右附加。主体恒居中（两侧 1fr 等宽），
+   附加按钮贴着行的左右两端；锁定行宽让主界面与景览两处的间距一致。
+   「显示更多控件」关着时附加按钮不占位 */
 .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-200);   /* 附加按钮与播控主体之间留一点呼吸，别贴在一起 */
+    width: min(340px, 100%);
+    margin-inline: auto;
+    animation: rise .8s var(--ease-decel) .3s both;
+}
+
+.controls-main {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-600);
-    animation: rise .8s var(--ease-decel) .3s both;
+}
+
+.controls-side {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.controls-side--lead { justify-content: flex-start; }
+.controls-side--trail { justify-content: flex-end; }
+
+/* 附加按钮（投稿 / 播放列表）：跟随栏宽收缩，永远不会把行撑破。
+   选择器带 .controls 前缀 —— 否则会被后面 .skip-btn 的基础尺寸（56px / display:grid）压回去 */
+.controls .ctl-extra {
+    display: grid;
+    width: min(48px, 100%);
+    height: auto;
+    aspect-ratio: 1;
+    background: transparent;      /* 附加按钮只留图标，不套圆形底盘 */
+}
+
+.controls .ctl-extra:hover { background: transparent; }
+
+.controls .ctl-extra .skip-icon { width: 22px; height: 22px; }
+
+/* 播放列表按钮常驻（与「更多控件」开关无关）；
+   投稿按钮只在打开「更多控件」时出现 */
+.controls #btnSubmit { display: none; }
+
+body.more-ctl #btnSubmit {
+    display: grid;
+    animation: ctl-pop .34s var(--ease-spring, var(--ease-spring-fallback)) both;
+}
+
+@keyframes ctl-pop {
+    from { opacity: 0; transform: scale(.5); }
+    to   { opacity: 1; transform: none; }
 }
 
 @keyframes rise {
@@ -927,8 +976,7 @@ body.cover-flying .mini-cover { opacity: 0; }
 
 /* ---------- 播放列表 ----------
    收起时只剩头部胶囊（圆角取头高一半，压成完整胶囊），
-   展开时第二行同样用长度插值（0px ⇄ --list-h），与播放器卡片同一速率。
-   与播放器卡片正好相反：播放器收起成胶囊时，列表才展开 */
+   点开时整张卡片搬进屏幕居中的浮层里展开（见 .playlist-overlay） */
 .playlist-card {
     display: grid;
     grid-template-rows: auto minmax(0px, 0px);
@@ -948,13 +996,14 @@ body.cover-flying .mini-cover { opacity: 0; }
 .player-card.no-ease,
 .playlist-card.no-ease { transition: none; }
 
-body.list-open .playlist-card {
+body.playlist-open .playlist-card {
     grid-template-rows: auto minmax(0px, var(--list-h));
     border-radius: var(--radius-playlist-open);
 }
 
-/* 右键菜单里关掉「显示播放列表」：整张卡片移出布局（JS 同时会收起展开态） */
-body.no-playlist .playlist-card { display: none; }
+/* 右键菜单里关掉「显示播放列表」：主界面栈里的入口收起。
+   播放列表按钮不受影响 —— 它还能把列表作为居中浮层临时唤出 */
+body.no-playlist .player-stack .playlist-card { display: none; }
 
 .playlist-head {
     display: flex;
@@ -1009,7 +1058,7 @@ body.no-playlist .playlist-card { display: none; }
     transition: transform var(--morph-duration) var(--ease-emphasized);
 }
 
-body.list-open .playlist-chevron { transform: rotate(180deg); }
+body.playlist-open .playlist-chevron { transform: rotate(180deg); }
 
 /* 列表体：自身不带内边距（padding 会撑住最小高度、收不成零高） */
 .playlist-body {
@@ -1051,6 +1100,40 @@ body.list-open .playlist-chevron { transform: rotate(180deg); }
         scrollbar-color: color-mix(in oklab, var(--on-surface) 22%, transparent) transparent;
     }
 }
+
+/* ---------- 播放列表浮层 ----------
+   主界面与景览共用：点播控两侧的播放列表按钮，卡片整块搬到屏幕正中间。
+   层级压过景览（16）、低于右键菜单（18）；点空白或 Esc 关闭。
+   卡片本身已有表面色 / 模糊 / 阴影，这里只负责定位与压暗背景 */
+.playlist-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 17;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-500);
+    background: color-mix(in oklab, #000 42%, transparent);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .25s var(--ease-decel), visibility 0s linear .25s;
+}
+
+body.playlist-open .playlist-overlay {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity .25s var(--ease-decel), visibility 0s;
+}
+
+.playlist-panel {
+    width: min(620px, 100%);
+    max-height: 100%;
+}
+
+/* 卡片刚搬进来时不重放自己的入场动画，浮层已有淡入 */
+.playlist-overlay .playlist-card { animation: none; }
 
 /* 曲目行：等化器占位 | 日期 | 曲名/歌手 | 类型 | 时长。
    日期列里那颗按钮挂在 li 上（绝对定位压过来，原因见 .track-date），
@@ -1900,6 +1983,12 @@ body.menu-dragging .menu-item.is-pressed { background: color-mix(in oklab, var(-
     .mini-btn > svg { width: 20px; height: 20px; }
     .mini-title { font-size: 14px; }
 
+    /* 更多控件：五颗按钮同排会挤爆窄屏，整行收紧一档（仅此开关打开时生效） */
+    body.more-ctl .controls-main { gap: var(--space-200); }
+    body.more-ctl .controls-main .skip-btn { width: 44px; height: 44px; }
+    body.more-ctl .controls-main .skip-icon { width: 22px; height: 22px; }
+    body.more-ctl .controls-main .fab { width: 68px; height: 68px; }
+
     /* 播放列表：头部收窄、列表限高 */
     .playlist-head { padding: 0 var(--space-400); }
     .playlist-list { max-height: 46vh; padding: 4px var(--space-200) var(--space-200); }
@@ -1928,3 +2017,216 @@ body.menu-dragging .menu-item.is-pressed { background: color-mix(in oklab, var(-
         scroll-behavior: auto !important;
     }
 }
+
+/* ---------- 景览模式（锁屏样式的播放器视图） ----------
+   由「景览模式」开关切换的另一种视图形态：当前曲目封面铺底当壁纸，上方锁屏时钟，
+   中部大封面与曲目信息，底部沿用主播放器那一套进度条与播控 —— 进入时把
+   .progress-zone / .controls 两个节点整块搬进 .scene-slot，退出时按原顺序搬回，
+   所以滑条渲染、拖动、图标切换、涟漪、aria 全部零改动复用，与主界面天然一致。
+   它恒为深色（锁屏语境），所以整层就地重定义一套暗色表面角色（取值同 :root 暗色一组）
+   —— 内部控件因此能和站内其他组件一样直接消费 --surface-* / --on-surface-*，
+   不必各写裸色。强调色另取 JS 的暗色调色板（--scene-primary，见 applyPalette）：
+   浅色模式下 :root 的 --primary 是为浅底调的深蓝，直接落在深色面板上会发闷。
+   永远占满视口，所以固定值即视口值，不用相对单位铺底 */
+body.scene-open { overflow: hidden; }   /* 打开时锁住底层滚动 */
+
+/* 景览模式下把主播放器栈整层摘出布局：既不与景览争指针 / 焦点，
+   也不会让「进度条与播控被搬走」这段时间的空高度写坏 --full-h
+   （量高有 fullH > 0 的护栏，隐藏期间只是跳过，保留上一次的有效值） */
+body.scene-open .player-stack { display: none; }
+
+.scene-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 16;                 /* 低于日历（17）/ 菜单（18）/ 关于（19）/ 错误浮层（20）：
+                                    这几层都要能压在景览之上 —— 尤其景览下也要唤得出右键菜单 */
+    /* 恒暗表面角色（同 :root 暗色一组）：整层内部统一走 MD3 角色色 */
+    --surface: #10131b;
+    --surface-container: #1c202b;
+    --surface-container-high: #262b37;
+    --surface-container-highest: #313745;
+    --on-surface: #e2e4ec;
+    --on-surface-variant: #c3c8d8;
+    --shadow-key: 0 18px 50px -12px rgba(0, 0, 0, .6);
+    --shadow-fab: 0 10px 28px -8px rgba(0, 0, 0, .55);
+    /* 强调色固定取暗色调色板（JS 写入），兜底同 :root 暗色 */
+    --primary: var(--scene-primary, #aac7ff);
+    --on-primary: var(--scene-on-primary, #0b2f6a);
+    /* 关着时整层不可见也不接触指针 —— 关掉后就是纯粹的一层背景，不挡主界面 */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    /* 收起：等淡出走完再置 hidden */
+    transition: opacity .3s var(--ease-decel), visibility 0s linear .3s;
+}
+
+body.scene-open .scene-layer {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity .3s var(--ease-decel), visibility 0s;
+}
+
+.scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--on-surface);
+    background: var(--surface);         /* 无封面时的兜底底色 */
+    isolation: isolate;
+}
+
+/* 整屏封面壁纸：cover 裁切铺满，轻微压暗让前景可读。
+   入场从 scale(1.06) 缓落到 1.04 —— 与站内模态同源的「缩放弹出」 */
+.scene-bg {
+    position: absolute;
+    inset: 0;
+    background-color: var(--surface-container);
+    /* 无封面时的兜底：一层主色氛围（有封面时被 JS 覆盖成 url） */
+    background-image:
+        radial-gradient(70% 90% at 20% 0%,
+            color-mix(in oklab, var(--primary) 42%, transparent), transparent 70%),
+        radial-gradient(80% 100% at 85% 100%,
+            color-mix(in oklab, var(--primary) 26%, transparent), transparent 72%);
+    background-size: cover;
+    background-position: center;
+    filter: brightness(.9) saturate(1.06);
+    transform: scale(1.06);      /* scale 溢出的那点边交给 .scene 的 overflow 裁掉 */
+    transition: transform .7s var(--ease-decel);
+}
+
+body.scene-open .scene-bg { transform: scale(1.04); }
+
+/* 上下压暗的渐变罩：上方托住时钟、下方托住播控。
+   用表面角色的透明梯度（而非纯黑），暗色语境下与整体同一色系 */
+.scene-scrim {
+    position: absolute;
+    inset: 0;
+    /* 无 color-mix 时的回退：端点为不透明表面色 */
+    background: linear-gradient(180deg,
+        var(--surface) 0%, transparent 24%, transparent 52%,
+        var(--surface) 76%, var(--surface) 100%);
+    background: linear-gradient(180deg,
+        color-mix(in oklab, var(--surface) 62%, transparent) 0%,
+        color-mix(in oklab, var(--surface) 16%, transparent) 24%,
+        color-mix(in oklab, var(--surface) 10%, transparent) 52%,
+        color-mix(in oklab, var(--surface) 52%, transparent) 76%,
+        color-mix(in oklab, var(--surface) 82%, transparent) 100%);
+}
+
+/* 内容层：时钟贴顶、播控贴底。矮视口允许内部滚动兜底（正常放得下不会滚）。
+   进出都是同一段淡入 + 微移，方向对称 —— 它是视图形态切换，不是模态开合 */
+.scene-inner {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding:
+        calc(env(safe-area-inset-top) + clamp(60px, 8vh, 96px))
+        max(clamp(16px, 5vw, 56px), env(safe-area-inset-left))
+        calc(env(safe-area-inset-bottom) + clamp(16px, 4vh, 40px))
+        max(clamp(16px, 5vw, 56px), env(safe-area-inset-right));
+    opacity: 0;
+    transform: translateY(14px) scale(.99);
+    transition: opacity .34s var(--ease-decel),
+                transform .5s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+body.scene-open .scene-inner { opacity: 1; transform: none; }
+
+.scene-top { text-align: center; }
+
+/* 日期做成一枚小玻璃胶囊，与时钟拉开层级 */
+.scene-date {
+    display: inline-block;
+    margin: 0 0 var(--space-200);
+    padding: 5px var(--space-400);
+    border-radius: var(--shape-full);
+    background: color-mix(in oklab, var(--surface-container-highest) 44%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: clamp(12.5px, 1.5vw, 14px);
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--on-surface-variant);
+}
+
+/* 锁屏时钟：等宽数字，字重收一档、字距收紧，避免大字号下发虚 */
+.scene-clock {
+    margin: 0;
+    font-size: clamp(48px, 8vw, 104px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -.028em;
+    font-variant-numeric: tabular-nums;
+    color: var(--on-surface);
+    text-shadow: 0 2px 30px rgba(0, 0, 0, .38);
+}
+
+/* 曲目信息：坐在底部承托区的最上方；位置由 .scene-slot 的列顺序决定 */
+.scene-meta-text { min-width: 0; text-align: center; }
+
+.scene-title {
+    margin: 0;
+    font-size: clamp(19px, 2.6vw, 26px);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 18px rgba(0, 0, 0, .45);
+}
+
+.scene-artist {
+    margin: 4px 0 0;              /* 4px 微调，M3 间距刻度无此档 */
+    font-size: clamp(13.5px, 2vw, 16px);
+    color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 底部承托区：曲目信息 + 进度条 + 播控同处一列，直接落在壁纸上 —— 没有卡片、没有毛玻璃。
+   自身不设内边距，屏幕留白由 .scene-inner 统一给；控件几何全由原样式决定 */
+.scene-slot {
+    margin: auto auto 0;
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-500);
+}
+
+/* 大屏：内容列收在舒适宽度内，播控区按比例放宽 —— 别把手机版拉伸成一整页 */
+@media (min-width: 900px) {
+    .scene-inner { padding-inline: max(var(--space-1000), env(safe-area-inset-left)); }
+    .scene-slot { width: min(620px, 100%); }
+}
+
+/* 超宽屏：留白再拉开一档，时钟随之涨大 */
+@media (min-width: 1500px) {
+    .scene-clock { font-size: clamp(88px, 7vw, 132px); }
+    .scene-slot { width: min(720px, 100%); }
+    .scene-title { font-size: 26px; }
+    .scene-artist { font-size: 17px; }
+}
+
+/* 矮视口（横屏手机 / 矮小窗）：时钟与播控一起压缩，争取一屏放得下。
+   放在大屏规则之后 —— 宽且矮时以这一档为准 */
+@media (max-height: 620px) {
+    .scene-inner {
+        padding-top: calc(env(safe-area-inset-top) + 52px);
+        padding-bottom: calc(env(safe-area-inset-bottom) + var(--space-300));
+    }
+    .scene-date { margin-bottom: 0; padding: 3px var(--space-300); font-size: 11px; }
+    .scene-clock { font-size: clamp(30px, 8vh, 54px); }
+    .scene-title { font-size: 17px; }
+    .scene-artist { margin-top: 2px; font-size: 12.5px; }
+    .scene-slot { gap: var(--space-200); }
+}
+
