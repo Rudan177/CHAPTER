@@ -1023,6 +1023,7 @@
         lyricRaw = '';
         lyricIdx = -1;
         lyricLine = null;
+        renderSceneLyrics();
     }
 
     // 二分找当前该显示的行；-1 = 还没到第一句
@@ -1045,6 +1046,7 @@
         lyricIdx = idx;
         lyricLine = idx >= 0 ? lyrics[idx].text : null;
         applyArtistText();
+        renderSceneLyrics();
     }
 
     /* ---------------- 从封面提取主题色（M3 动态色） ---------------- */
@@ -1493,6 +1495,7 @@
         lyricLine = null;
         updateLyric(audio.currentTime);   // 打开时立刻对齐到当前句
         applyArtistText();                // 关闭时（或还没唱到第一句）回落歌手名
+        renderSceneLyrics();              // 景览歌词跟着开关一起出现 / 消失
         syncMenu();
     }
 
@@ -2108,8 +2111,11 @@
     const SCENE_WEEK = ['日', '一', '二', '三', '四', '五', '六'];
     // 搬进 / 搬回的固定顺序：进度条在前、播控在后（排在 .scene-slot 里已有的曲目信息之后）
     const SCENE_SLOT_ORDER = [progressZone, controlsEl];
+    const sceneLyrics = $('sceneLyrics');
+    const sceneLyricsTrack = $('sceneLyricsTrack');
     let sceneClockTimer = 0;
     let sceneCoverUrl = '';         // 已铺到景览的壁纸封面 URL，用来去重
+    let sceneLyricArr = null;       // 已渲染的歌词数组引用；换曲（新数组）才重建行
 
     const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -2143,6 +2149,59 @@
         sceneArtist.textContent = currentMeta.artist;
     }
 
+    /* 景览歌词：只有「景览模式 + 显示歌词」同时开着、且当前曲目有歌词时才出现。
+       当前句居中高亮，整块歌词随进度上移，上下边缘由 CSS 遮罩淡出 */
+    function renderSceneLyrics() {
+        const on = prefs.lyrics && lyrics.length > 0;
+        document.body.classList.toggle('scene-lyrics-on', on);
+        if (!on) {
+            if (sceneLyricArr) {
+                sceneLyricsTrack.textContent = '';
+                sceneLyricsTrack.style.transform = '';
+                sceneLyricArr = null;
+            }
+            return;
+        }
+        const rebuilt = sceneLyricArr !== lyrics;
+        if (rebuilt) {
+            sceneLyricArr = lyrics;
+            const frag = document.createDocumentFragment();
+            lyrics.forEach((l) => {
+                const p = document.createElement('p');
+                p.className = 'scene-lyric-line';
+                p.textContent = l.text;
+                frag.appendChild(p);
+            });
+            sceneLyricsTrack.textContent = '';
+            sceneLyricsTrack.appendChild(frag);
+        }
+        const rows = sceneLyricsTrack.children;
+        for (let i = 0; i < rows.length; i++) {
+            rows[i].classList.toggle('is-active', i === lyricIdx);
+        }
+        centerSceneLyrics(!rebuilt);    // 换曲时直接落到当前句，不从上首位置滑过来
+    }
+
+    // 把当前句挪到歌词块正中：translate 不依赖滚动边界，首尾句也能居中
+    function centerSceneLyrics(smooth) {
+        if (!sceneOpen || !sceneLyricArr || !sceneLyrics.clientHeight) return;
+        const rows = sceneLyricsTrack.children;
+        if (!rows.length) return;
+        const row = rows[Math.max(0, Math.min(lyricIdx, rows.length - 1))];
+        const dy = sceneLyrics.clientHeight / 2 - (row.offsetTop + row.offsetHeight / 2);
+        if (!smooth) sceneLyricsTrack.classList.add('no-ease');
+        sceneLyricsTrack.style.transform = `translateY(${dy}px)`;
+        if (!smooth) {
+            void sceneLyricsTrack.offsetWidth;   // 提交无过渡位移后再恢复过渡
+            sceneLyricsTrack.classList.remove('no-ease');
+        }
+    }
+
+    // 视口 / 景览尺寸变化后重新居中（歌词块从隐藏变为可见时也会触发）
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(() => centerSceneLyrics(false)).observe(sceneLyrics);
+    }
+
     /* 进出的唯一开关：菜单里的勾选项走它。
        进入 = 把进度区与播控搬进 .scene-slot；退出 = 各自按原位置搬回。
        视觉切换全部交给 body.scene-open 上的 CSS 过渡 */
@@ -2169,6 +2228,8 @@
         // 滑条宽度随宿主变化：重新量轨道，再按当前进度写一次手柄位置
         measureTrack();
         renderProgress(audio.currentTime);
+        // 刚搬到景览时布局尺寸才成立，下一帧再把歌词对到当前句
+        if (on) requestAnimationFrame(renderSceneLyrics);
         syncMenu();                     // 勾选态跟着视图态走
     }
 

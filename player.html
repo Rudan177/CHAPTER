@@ -326,15 +326,15 @@
         <dl class="about-meta">
             <div class="about-meta-row">
                 <dt>版本号</dt>
-                <dd>1.6.0</dd>
+                <dd>1.6.1</dd>
             </div>
             <div class="about-meta-row">
-                <dt>页面更新日期</dt>
+                <dt>页面更新</dt>
                 <dd>2026年10月19日</dd>
             </div>
             
             <div class="about-meta-row">
-                <dt>音频更新日期</dt>
+                <dt>音频更新</dt>
                 <dd id="aboutDate">--</dd>
             </div>
             <div class="about-meta-row">
@@ -385,6 +385,12 @@
                 <p class="scene-date" id="sceneDate">—</p>
                 <p class="scene-clock" id="sceneClock">--:--</p>
             </header>
+
+            <!-- 景览歌词：只在「景览模式 + 显示歌词」同时开着时占据时钟与播控之间的空白。
+                 整块歌词沿垂直方向平滑滚动，当前句高亮，上下用遮罩淡出 -->
+            <div class="scene-lyrics" id="sceneLyrics">
+                <div class="scene-lyrics-track" id="sceneLyricsTrack"></div>
+            </div>
 
             <!-- 曲目信息与播控同处底部：信息在框内最上方，其后是进度条与播控 -->
             <div class="scene-slot" id="sceneSlot">

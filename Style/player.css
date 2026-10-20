@@ -765,7 +765,7 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
 /* 附加按钮（投稿 / 播放列表）：跟随栏宽收缩，永远不会把行撑破。
    选择器带 .controls 前缀 —— 否则会被后面 .skip-btn 的基础尺寸（56px / display:grid）压回去 */
 .controls .ctl-extra {
-    display: grid;
+    display: none;
     width: min(48px, 100%);
     height: auto;
     aspect-ratio: 1;
@@ -776,11 +776,8 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
 
 .controls .ctl-extra .skip-icon { width: 22px; height: 22px; }
 
-/* 播放列表按钮常驻（与「更多控件」开关无关）；
-   投稿按钮只在打开「更多控件」时出现 */
-.controls #btnSubmit { display: none; }
-
-body.more-ctl #btnSubmit {
+/* 投稿 / 播放列表两颗附加按钮只在打开「更多控件」时出现 */
+body.more-ctl .ctl-extra {
     display: grid;
     animation: ctl-pop .34s var(--ease-spring, var(--ease-spring-fallback)) both;
 }
@@ -2170,6 +2167,76 @@ body.scene-open .scene-inner { opacity: 1; transform: none; }
     text-shadow: 0 2px 30px rgba(0, 0, 0, .38);
 }
 
+/* 景览歌词：只占时钟与底部承托区之间的空白。
+   默认不出现 —— 必须「景览模式 + 显示歌词」同时打开才显示（JS 切 scene-lyrics-on）。
+   整块歌词上下用遮罩淡出，当前句居中高亮，前后句随播放进度平滑上移 */
+.scene-lyrics {
+    position: relative;
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    margin: var(--space-600) 0 var(--space-500);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+
+/* 当前句背后的一小片磨砂：只盖歌词块中部，面积小、位置固定，
+   靠 backdrop-filter 提升文字与壁纸的对比，不用文字阴影 */
+.scene-lyrics::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(92%, 580px);
+    height: min(62%, 210px);
+    transform: translate(-50%, -50%);
+    border-radius: 38%;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(16px) saturate(1.06);
+    backdrop-filter: blur(16px) saturate(1.06);
+    -webkit-mask-image: radial-gradient(closest-side, #000 32%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 32%, transparent 100%);
+}
+
+body.scene-open.scene-lyrics-on .scene-lyrics { display: block; }
+
+.scene-lyrics-track {
+    position: relative;          /* 让行 offsetTop 以歌词块自身为基准 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.8vh, 18px);
+    will-change: transform;
+    transition: transform .55s var(--ease-emphasized);
+}
+
+/* 换曲 / 刚进景览：先无过渡落到当前句，避免从上一首的位置滑过来 */
+.scene-lyrics-track.no-ease { transition: none; }
+
+.scene-lyric-line {
+    margin: 0;
+    max-width: 100%;
+    padding-inline: 6px;
+    font-size: clamp(15px, 2.1vw, 21px);
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    color: color-mix(in oklab, var(--on-surface) 52%, transparent);
+    opacity: .82;
+    transform: scale(.96);
+    transition: color .4s var(--ease-emphasized),
+                opacity .4s var(--ease-emphasized),
+                transform .45s var(--ease-spring, var(--ease-spring-fallback));
+}
+
+.scene-lyric-line.is-active {
+    color: var(--on-surface);
+    opacity: 1;
+    font-weight: 700;
+    transform: scale(1);
+}
+
 /* 曲目信息：坐在底部承托区的最上方；位置由 .scene-slot 的列顺序决定 */
 .scene-meta-text { min-width: 0; text-align: center; }
 
@@ -2228,5 +2295,8 @@ body.scene-open .scene-inner { opacity: 1; transform: none; }
     .scene-title { font-size: 17px; }
     .scene-artist { margin-top: 2px; font-size: 12.5px; }
     .scene-slot { gap: var(--space-200); }
+    .scene-lyrics { margin: var(--space-300) 0; }
+    .scene-lyrics-track { gap: 8px; }
+    .scene-lyric-line { font-size: 14px; }
 }
 
