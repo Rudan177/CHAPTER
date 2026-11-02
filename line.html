@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日金句 · OOOInterface</title>
+    <style>
+        @font-face {
+            font-family: 'RUDAN';
+            src: url('font/RUDAN.otf') format('opentype');
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'HMSC';
+            src: url('font/HarmonyOS_SansSC.ttf') format('truetype');
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            color-scheme: light dark;
+            --primary: #006b5b;
+            --on-primary: #ffffff;
+            --primary-container: #9ff2df;
+            --on-primary-container: #00201a;
+            --surface: #f4faf7;
+            --on-surface: #171d1b;
+            --on-surface-variant: #3f4946;
+            --card: #ffffff;
+            --outline: #6f7975;
+            --outline-variant: #bec9c4;
+            --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
+            --ease: cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #57dbc4;
+                --on-primary: #00382e;
+                --primary-container: #005144;
+                --on-primary-container: #76f8de;
+                --surface: #0e1513;
+                --on-surface: #dde4e0;
+                --on-surface-variant: #bfc9c4;
+                --card: #171d1b;
+                --outline: #89938f;
+                --outline-variant: #3f4946;
+                --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            padding: clamp(24px, 4vw, 40px) 20px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'HMSC', system-ui, -apple-system, sans-serif;
+            background: var(--surface);
+            color: var(--on-surface);
+        }
+
+        .top-bar {
+            width: min(720px, 100%);
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 4px;
+            margin-bottom: 24px;
+        }
+
+        .wordmark {
+            font-family: 'RUDAN', 'HMSC', sans-serif;
+            font-size: 18px;
+            letter-spacing: 0.04em;
+            color: var(--on-surface);
+        }
+
+        .top-label {
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            color: var(--on-surface-variant);
+        }
+
+        .page {
+            width: min(720px, 100%);
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .line-card {
+            padding: clamp(24px, 4vw, 40px);
+            border-radius: 28px;
+            background: var(--card);
+            box-shadow: var(--shadow-1);
+            animation: fade-in 0.3s var(--ease) both;
+        }
+
+        .line-media {
+            display: none;
+            margin: 0 0 28px;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .line-media.show {
+            display: block;
+        }
+
+        .line-media img {
+            display: block;
+            width: 100%;
+            max-height: 40vh;
+            object-fit: contain;
+        }
+
+        .line-date {
+            display: block;
+            margin-bottom: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: var(--on-surface-variant);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .line-quote {
+            margin: 0;
+            font-family: 'HMSC', system-ui, -apple-system, sans-serif;
+            font-size: clamp(30px, 5.6vw, 52px);
+            font-weight: 600;
+            line-height: 1.18;
+            letter-spacing: -0.02em;
+            color: var(--on-surface);
+            text-wrap: balance;
+            word-break: break-word;
+        }
+
+        .line-quote.is-loading {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.6;
+            letter-spacing: 0;
+            color: var(--on-surface-variant);
+        }
+
+        .retry {
+            height: 40px;
+            margin-top: 24px;
+            padding: 0 24px;
+            border: none;
+            border-radius: 20px;
+            background: var(--primary-container);
+            color: var(--on-primary-container);
+            font-family: 'HMSC', system-ui, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s var(--ease);
+        }
+
+        .retry:hover {
+            opacity: 0.85;
+        }
+
+        .retry[hidden] {
+            display: none;
+        }
+
+        .line-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 18px;
+            border-top: 1px solid var(--outline-variant);
+            font-size: 12px;
+            letter-spacing: 0.06em;
+            color: var(--on-surface-variant);
+        }
+
+        .line-foot .brand {
+            font-family: 'RUDAN', 'HMSC', sans-serif;
+            font-size: 14px;
+            letter-spacing: 0.04em;
+            color: var(--on-surface);
+        }
+
+        .history[hidden] {
+            display: none;
+        }
+
+        .history-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 4px;
+            margin-bottom: 8px;
+            color: var(--on-surface-variant);
+            font-size: 13px;
+            letter-spacing: 0.06em;
+        }
+
+        .history-title {
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .history-count {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .history-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            border-top: 1px solid var(--outline-variant);
+        }
+
+        .history-item {
+            display: grid;
+            grid-template-columns: 100px minmax(0, 1fr);
+            align-items: baseline;
+            gap: 16px;
+            padding: 16px 4px;
+            border-bottom: 1px solid var(--outline-variant);
+        }
+
+        .history-date {
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            color: var(--on-surface-variant);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .history-line {
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--on-surface);
+            word-break: break-word;
+        }
+
+        .page-foot {
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            text-align: center;
+            color: var(--on-surface-variant);
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 16px 28px;
+            }
+
+            .top-bar {
+                margin-bottom: 20px;
+            }
+
+            .line-card {
+                padding: 22px 20px 24px;
+                border-radius: 24px;
+            }
+
+            .line-quote {
+                font-size: clamp(26px, 7.2vw, 36px);
+                line-height: 1.22;
+            }
+
+            .line-foot {
+                margin-top: 26px;
+            }
+
+            .history-item {
+                grid-template-columns: 1fr;
+                gap: 4px;
+                padding: 14px 4px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="top-bar">
+        <span class="wordmark">OOOInterface</span>
+        <span class="top-label">每日金句</span>
+    </header>
+
+    <main class="page">
+        <article class="line-card">
+            <div class="line-media" id="lineMedia">
+                <img id="lineImage" alt="">
+            </div>
+            <span class="line-date" id="lineDate"></span>
+            <blockquote class="line-quote is-loading" id="lineQuote">正在读取今日金句…</blockquote>
+            <button class="retry" id="retryBtn" type="button" hidden>重新加载</button>
+            <div class="line-foot">
+                <span class="brand">OOOInterface</span>
+                <span>OOO DAILY LINE</span>
+            </div>
+        </article>
+
+        <section class="history" id="lineHistory" hidden>
+            <div class="history-head">
+                <span class="history-title">往期金句</span>
+                <span class="history-count" id="historyCount"></span>
+            </div>
+            <ol class="history-list" id="historyList"></ol>
+        </section>
+
+        <p class="page-foot">OOOInterface Daily Line v0.1</p>
+    </main>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var SOURCE = 'https://rudan177.github.io/OOOInterface/images/ODL/dailyline.json';
+
+            var quoteEl = document.getElementById('lineQuote');
+            var dateEl = document.getElementById('lineDate');
+            var mediaEl = document.getElementById('lineMedia');
+            var imageEl = document.getElementById('lineImage');
+            var retryBtn = document.getElementById('retryBtn');
+            var historyEl = document.getElementById('lineHistory');
+            var historyListEl = document.getElementById('historyList');
+            var historyCountEl = document.getElementById('historyCount');
+
+            function getTodayKey() {
+                var parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Shanghai',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).formatToParts(new Date());
+                var map = {};
+                parts.forEach(function (part) {
+                    map[part.type] = part.value;
+                });
+                return map.year + map.month + map.day;
+            }
+
+            function formatDate(key) {
+                var matched = /^(\d{4})(\d{2})(\d{2})$/.exec(key || '');
+                if (!matched) {
+                    return { short: key || '', weekday: '' };
+                }
+                var date = new Date(Date.UTC(
+                    Number(matched[1]),
+                    Number(matched[2]) - 1,
+                    Number(matched[3])
+                ));
+                var weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+                return {
+                    short: matched[1] + '.' + matched[2] + '.' + matched[3],
+                    weekday: weekdays[date.getUTCDay()]
+                };
+            }
+
+            function selectLines(list, todayKey) {
+                var entries = (Array.isArray(list) ? list : []).filter(function (item) {
+                    return item && typeof item.line === 'string' && item.line.trim();
+                });
+
+                if (!entries.length) return null;
+
+                var sorted = entries.slice().sort(function (a, b) {
+                    return String(b.date || '').localeCompare(String(a.date || ''));
+                });
+
+                var current = sorted.find(function (item) {
+                    return String(item.date || '') === todayKey;
+                });
+
+                if (!current) {
+                    current = sorted.find(function (item) {
+                        return String(item.date || '') <= todayKey;
+                    });
+                }
+
+                current = current || sorted[0];
+
+                var currentDate = String(current.date || '');
+                var previous = sorted.filter(function (item) {
+                    return item !== current && String(item.date || '') < currentDate;
+                });
+
+                return { current: current, previous: previous };
+            }
+
+            function renderHistory(previous) {
+                historyListEl.textContent = '';
+
+                if (!previous.length) {
+                    historyEl.hidden = true;
+                    return;
+                }
+
+                previous.forEach(function (item) {
+                    var dateInfo = formatDate(item.date);
+                    var row = document.createElement('li');
+                    row.className = 'history-item';
+
+                    var date = document.createElement('span');
+                    date.className = 'history-date';
+                    date.textContent = dateInfo.short;
+
+                    var line = document.createElement('span');
+                    line.className = 'history-line';
+                    line.textContent = item.line.trim();
+
+                    row.appendChild(date);
+                    row.appendChild(line);
+                    historyListEl.appendChild(row);
+                });
+
+                historyCountEl.textContent = '共 ' + previous.length + ' 条';
+                historyEl.hidden = false;
+            }
+
+            function hideHistory() {
+                historyEl.hidden = true;
+                historyListEl.textContent = '';
+            }
+
+            function showLoading() {
+                quoteEl.classList.add('is-loading');
+                quoteEl.textContent = '正在读取今日金句…';
+                retryBtn.hidden = true;
+                mediaEl.classList.remove('show');
+                hideHistory();
+            }
+
+            function showError(todayKey) {
+                var today = formatDate(todayKey);
+                quoteEl.classList.remove('is-loading');
+                quoteEl.textContent = '今日金句暂时未能抵达';
+                dateEl.textContent = today.short + (today.weekday ? ' · ' + today.weekday : '');
+                retryBtn.hidden = false;
+                mediaEl.classList.remove('show');
+                hideHistory();
+            }
+
+            function showLine(item, todayKey, previous) {
+                var dateInfo = formatDate(item.date || todayKey);
+                quoteEl.classList.remove('is-loading');
+                quoteEl.textContent = item.line.trim();
+                dateEl.textContent = dateInfo.short + (dateInfo.weekday ? ' · ' + dateInfo.weekday : '');
+                retryBtn.hidden = true;
+                renderHistory(previous);
+
+                if (item.image) {
+                    try {
+                        imageEl.src = new URL(item.image, SOURCE).href;
+                        imageEl.alt = item.line.trim();
+                    } catch (error) {
+                        mediaEl.classList.remove('show');
+                    }
+                } else {
+                    mediaEl.classList.remove('show');
+                }
+            }
+
+            function load() {
+                showLoading();
+                var todayKey = getTodayKey();
+
+                fetch(SOURCE + '?v=' + todayKey, { cache: 'no-store' })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        var selection = selectLines(data && data.list, todayKey);
+                        if (!selection) throw new Error('empty list');
+                        showLine(selection.current, todayKey, selection.previous);
+                    })
+                    .catch(function () {
+                        showError(todayKey);
+                    });
+            }
+
+            imageEl.addEventListener('load', function () {
+                mediaEl.classList.add('show');
+            });
+
+            imageEl.addEventListener('error', function () {
+                mediaEl.classList.remove('show');
+            });
+
+            retryBtn.addEventListener('click', load);
+
+            load();
+        })();
+    </script>
+</body>
+</html>
