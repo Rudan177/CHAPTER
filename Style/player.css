@@ -763,28 +763,36 @@ body.list-open .mini-inner { opacity: 1; transition-delay: .22s; }
 .controls-side--trail { justify-content: flex-end; }
 
 /* 附加按钮（投稿 / 播放列表）：跟随栏宽收缩，永远不会把行撑破。
-   选择器带 .controls 前缀 —— 否则会被后面 .skip-btn 的基础尺寸（56px / display:grid）压回去 */
+   选择器带 .controls 前缀 —— 否则会被后面 .skip-btn 的基础尺寸（56px / display:grid）压回去。
+   这两颗按钮常驻布局、只把宽度与不透明度过渡到 0：
+   用 display:none 切换的话关闭时没有退场过程，开启时也要等一帧才进场，
+   和旁边按钮的间距会「跳」一下；宽度过渡则让整行按钮顺滑地让位 / 收拢 */
 .controls .ctl-extra {
-    display: none;
+    display: grid;
     width: min(48px, 100%);
     height: auto;
     aspect-ratio: 1;
+    /* flex 项默认 min-width:auto 会被图标的最小内容宽度撑住，
+       收不到真正的 0；按钮还有 UA 默认的 6px 左右内边距，
+       两者叠加会在关掉时残留十几像素的占位 */
+    min-width: 0;
+    padding: 0;
     background: transparent;      /* 附加按钮只留图标，不套圆形底盘 */
+    transition: width .42s var(--ease-spring, var(--ease-spring-fallback)),
+                opacity .26s var(--ease-emphasized),
+                transform .42s var(--ease-spring, var(--ease-spring-fallback));
 }
 
 .controls .ctl-extra:hover { background: transparent; }
 
 .controls .ctl-extra .skip-icon { width: 22px; height: 22px; }
 
-/* 投稿 / 播放列表两颗附加按钮只在打开「更多控件」时出现 */
-body.more-ctl .ctl-extra {
-    display: grid;
-    animation: ctl-pop .34s var(--ease-spring, var(--ease-spring-fallback)) both;
-}
-
-@keyframes ctl-pop {
-    from { opacity: 0; transform: scale(.5); }
-    to   { opacity: 1; transform: none; }
+/* 关闭「更多控件」：宽度归零 + 淡出 + 轻微缩小，整行按钮间距同步收拢 */
+body:not(.more-ctl) .ctl-extra {
+    width: 0;
+    opacity: 0;
+    transform: scale(.7);
+    pointer-events: none;
 }
 
 @keyframes rise {
@@ -941,11 +949,12 @@ body.seek-mode .icon-seek { opacity: 1; transform: none; }
 @keyframes ring-spin { to { transform: rotate(360deg); } }
 
 /* ---------- 封面飞行层 ----------
-   卡片收放时封面作为「共享元素」从完整形态飞进胶囊封面（或反向）：
-   绝对定位在 .player-card 内（卡片即定位上下文），
-   坐标全部是卡片坐标系，随卡片一起移动。
-   位置 / 尺寸 / 圆角交给 CSS 过渡，与卡片行高共用 --morph-duration 与同一缓动，
-   因此速率天然一致，中途反向也由浏览器按同一套规则接续 */
+   共享元素：封面作为共享元素在两种形态之间连续移动。
+   默认绝对定位在 .player-card 内（卡片即定位上下文，坐标是卡片局部坐标），
+   卡片收起为胶囊时，大封面飞进胶囊封面；
+   景览整屏壁纸那一趟改用 .is-screen（fixed + 视口坐标），可跨过景览层。
+   位置 / 尺寸 / 圆角 / 缩放交给 CSS 过渡，与卡片行高共用 --morph-duration
+   与同一缓动，速率天然一致，中途反向也由浏览器按同一套规则接续 */
 .cover-fly {
     position: absolute;
     left: 0;
@@ -956,13 +965,19 @@ body.seek-mode .icon-seek { opacity: 1; transform: none; }
     background-position: center;
     background-repeat: no-repeat;
     box-shadow: var(--shadow-key);
+    transform-origin: center;
     transition: left var(--morph-duration) var(--ease-emphasized),
                 top var(--morph-duration) var(--ease-emphasized),
                 width var(--morph-duration) var(--ease-emphasized),
                 height var(--morph-duration) var(--ease-emphasized),
-                border-radius var(--morph-duration) var(--ease-emphasized);
-    will-change: left, top, width, height;
+                border-radius var(--morph-duration) var(--ease-emphasized),
+                transform var(--morph-duration) var(--ease-emphasized),
+                filter var(--morph-duration) var(--ease-emphasized);
+    will-change: left, top, width, height, transform;
 }
+
+/* 景览整屏那一趟：脱离卡片、固定到视口，层级压在景览层（16）之上 */
+.cover-fly.is-screen { position: fixed; z-index: 17; }
 
 /* 起飞前先把起始几何落到起点，这一步不插值 */
 .cover-fly:not(.is-flying) { transition: none; }
@@ -973,7 +988,8 @@ body.cover-flying .mini-cover { opacity: 0; }
 
 /* ---------- 播放列表 ----------
    收起时只剩头部胶囊（圆角取头高一半，压成完整胶囊），
-   点开时整张卡片搬进屏幕居中的浮层里展开（见 .playlist-overlay） */
+   点开时留在这条栈里展开，播放器卡片同时收成胶囊（body.list-open）；
+   只有景览视图里播放器不在布局中，才临时搬进居中浮层（见 .playlist-overlay） */
 .playlist-card {
     display: grid;
     grid-template-rows: auto minmax(0px, 0px);
@@ -984,23 +1000,42 @@ body.cover-flying .mini-cover { opacity: 0; }
     -webkit-backdrop-filter: blur(28px) saturate(1.25);
     box-shadow: var(--shadow-key);
     overflow: hidden;
-    animation: card-in .9s var(--ease-decel) .12s both;
+    /* 用 backwards 而不是 both：both 会让动画结束后仍把 opacity 锁在 1，
+       「显示播放列表」关掉时的透明收起就永远生效不了 */
+    animation: card-in .9s var(--ease-decel) .12s backwards;
     transition: grid-template-rows var(--morph-duration) var(--ease-emphasized),
-                border-radius var(--morph-duration) var(--ease-emphasized);
+                border-radius var(--morph-duration) var(--ease-emphasized),
+                opacity .2s var(--ease-emphasized),
+                margin-top var(--morph-duration) var(--ease-emphasized);
 }
 
 /* 重测 --full-h / --list-h 时的临时态：尺寸更新不该被当成形态动画 */
 .player-card.no-ease,
 .playlist-card.no-ease { transition: none; }
 
-body.playlist-open .playlist-card {
+body.list-open .playlist-card {
     grid-template-rows: auto minmax(0px, var(--list-h));
     border-radius: var(--radius-playlist-open);
 }
 
-/* 右键菜单里关掉「显示播放列表」：主界面栈里的入口收起。
-   播放列表按钮不受影响 —— 它还能把列表作为居中浮层临时唤出 */
-body.no-playlist .player-stack .playlist-card { display: none; }
+/* 右键菜单里关掉「显示播放列表」：主界面栈里的收起态入口完全让出位置。
+   不用 display:none —— 那会让卡片从布局里消失，再次打开时没有起点可插值
+   （卡片会带着目标高度一次性上屏，观感是「一下子闪开」；重新上屏还会重放入场动画）。
+   这里用等高的负外边距把它顶回栈外 + 透明隐藏：卡片始终在布局里，
+   --list-h 也始终量得到；展开时外边距与行高一起插值，播放器是被平滑推上去的。
+   负值 = 头部高 + 栈的间距，正好让收起态不占任何高度 */
+body.no-playlist:not(.list-open) .player-stack .playlist-card {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    margin-top: calc(-1 * (var(--playlist-head-h) + var(--space-400)));
+    transition: grid-template-rows var(--morph-duration) var(--ease-emphasized),
+                border-radius var(--morph-duration) var(--ease-emphasized),
+                opacity .2s var(--ease-emphasized),
+                margin-top var(--morph-duration) var(--ease-emphasized),
+                /* 收起时等形变走完再隐藏，折叠过程才看得见 */
+                visibility 0s linear var(--morph-duration);
+}
 
 .playlist-head {
     display: flex;
@@ -1055,7 +1090,7 @@ body.no-playlist .player-stack .playlist-card { display: none; }
     transition: transform var(--morph-duration) var(--ease-emphasized);
 }
 
-body.playlist-open .playlist-chevron { transform: rotate(180deg); }
+body.list-open .playlist-chevron { transform: rotate(180deg); }
 
 /* 列表体：自身不带内边距（padding 会撑住最小高度、收不成零高） */
 .playlist-body {
@@ -2027,10 +2062,17 @@ body.menu-dragging .menu-item.is-pressed { background: color-mix(in oklab, var(-
    永远占满视口，所以固定值即视口值，不用相对单位铺底 */
 body.scene-open { overflow: hidden; }   /* 打开时锁住底层滚动 */
 
-/* 景览模式下把主播放器栈整层摘出布局：既不与景览争指针 / 焦点，
-   也不会让「进度条与播控被搬走」这段时间的空高度写坏 --full-h
-   （量高有 fullH > 0 的护栏，隐藏期间只是跳过，保留上一次的有效值） */
-body.scene-open .player-stack { display: none; }
+/* 景览模式下主播放器栈留在布局里、只是不可见：
+   不用 display:none 是因为那会在进场第一帧就把播放器抽走 ——
+   景览层还在淡入，中间这一帧露出底下空荡荡的页面，观感就是「闪一下」。
+   改用 visibility 延后到淡入结束再隐藏：进场是一段跨淡，
+   量高那边有 sceneOpen 护栏，不会把搬走的播控算成残缺高度 */
+body.scene-open .player-stack {
+    visibility: hidden;
+    /* 等整层压暗（含封面飞行）走完再隐藏：提前隐藏会在半透明的暗层下
+       看到卡片凭空消失 */
+    transition: visibility 0s linear var(--morph-duration);
+}
 
 .scene-layer {
     position: fixed;
@@ -2057,11 +2099,16 @@ body.scene-open .player-stack { display: none; }
     transition: opacity .3s var(--ease-decel), visibility 0s linear .3s;
 }
 
+/* 进场：景览层在主播放器之上淡入（主栈留在下面，见上一条），
+   两者是一段跨淡而不是硬切；退出同样走这段 .3s 淡出 */
 body.scene-open .scene-layer {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity .3s var(--ease-decel), visibility 0s;
+    /* 与封面飞行共用同一条时长与缓动：主界面是被封面「盖住」的，
+       而不是先闪成一块黑板等封面追上来。decel 曲线前 10% 就压到 74%，
+       那一下正是「闪」的来源 */
+    transition: opacity var(--morph-duration) var(--ease-emphasized), visibility 0s;
 }
 
 .scene {
@@ -2097,6 +2144,10 @@ body.scene-open .scene-layer {
 
 body.scene-open .scene-bg { transform: scale(1.04); }
 
+/* 封面飞行期间先藏住壁纸：飞行的这一层本身就是壁纸，
+   两张开同时会看到一层「重影」压在飞行动画上 */
+body.scene-open.cover-flying .scene-bg { visibility: hidden; }
+
 /* 上下压暗的渐变罩：上方托住时钟、下方托住播控。
    用表面角色的透明梯度（而非纯黑），暗色语境下与整体同一色系 */
 .scene-scrim {
@@ -2114,8 +2165,23 @@ body.scene-open .scene-bg { transform: scale(1.04); }
         color-mix(in oklab, var(--surface) 82%, transparent) 100%);
 }
 
+/* 开歌词时把中段再压深一档。
+   这段压暗走的是整屏渐变（百分比跟着视口走），所以在任何尺寸下都不会露出
+   「一块」的边界 —— 亮照片上铺浅色歌词，需要的正是这一层明度差：
+   只有模糊不带明度时，字和底仍是同一个亮度区间，读不出来 */
+body.scene-open.scene-lyrics-on .scene-scrim {
+    background: linear-gradient(180deg,
+        color-mix(in oklab, var(--surface) 64%, transparent) 0%,
+        color-mix(in oklab, var(--surface) 30%, transparent) 18%,
+        color-mix(in oklab, var(--surface) 44%, transparent) 36%,
+        color-mix(in oklab, var(--surface) 44%, transparent) 56%,
+        color-mix(in oklab, var(--surface) 56%, transparent) 74%,
+        color-mix(in oklab, var(--surface) 88%, transparent) 100%);
+}
+
 /* 内容层：时钟贴顶、播控贴底。矮视口允许内部滚动兜底（正常放得下不会滚）。
-   进出都是同一段淡入 + 微移，方向对称 —— 它是视图形态切换，不是模态开合 */
+   这里不再整块淡入 —— 一整块一起亮起来正是「闪现」的来源；
+   各部件按组错峰，见下面的 .scene-entering。这一层只负责退出时的整体淡出 */
 .scene-inner {
     position: relative;
     z-index: 1;
@@ -2126,19 +2192,60 @@ body.scene-open .scene-bg { transform: scale(1.04); }
     overflow-y: auto;
     overscroll-behavior: contain;
     padding:
-        calc(env(safe-area-inset-top) + clamp(60px, 8vh, 96px))
+        calc(env(safe-area-inset-top) + clamp(64px, 8vh, 100px))
         max(clamp(16px, 5vw, 56px), env(safe-area-inset-left))
-        calc(env(safe-area-inset-bottom) + clamp(16px, 4vh, 40px))
+        calc(env(safe-area-inset-bottom) + clamp(24px, 5vh, 56px))
         max(clamp(16px, 5vw, 56px), env(safe-area-inset-right));
     opacity: 0;
-    transform: translateY(14px) scale(.99);
-    transition: opacity .34s var(--ease-decel),
-                transform .5s var(--ease-spring, var(--ease-spring-fallback));
+    /* 退出：内容比底层先走（.16s），免得半透明的暗层里还挂着景览文案，
+       和底下已经恢复的主界面文案重在一起 */
+    transition: opacity .16s var(--ease-decel);
 }
 
-body.scene-open .scene-inner { opacity: 1; transform: none; }
+/* 进场：内容层自身立刻可见，透明度交给各部件 */
+body.scene-open .scene-inner {
+    opacity: 1;
+    transition: none;
+}
 
-.scene-top { text-align: center; }
+/* ---- 进场分组：逐组从下方浮起 ---- */
+/* 基础（终态）：各组都在自己的位置上、完全不透明。
+   延时用 --scene-delay，从封面落满整屏那一刻（JS 撤掉 .scene-entering）起算。
+   只动 opacity 与 transform：两者都在合成器上跑，整屏壁纸 + 磨砂歌词块同时在渲染时
+   也稳得住 60fps（给几组大块元素加 filter 动画会掉帧，反而更不丝滑） */
+.scene-top,
+.scene-slot .scene-meta-text,
+.scene-slot .progress-zone,
+.scene-slot .controls,
+.scene-lyrics {
+    opacity: 1;
+    transform: none;
+    transition: opacity .46s cubic-bezier(.22, .61, .36, 1) var(--scene-delay, 0s),
+                transform .56s var(--ease-emphasized) var(--scene-delay, 0s);
+}
+
+.scene-top {
+    --scene-delay: 0s;
+    text-align: center;
+}
+.scene-lyrics { --scene-delay: .05s; }
+.scene-slot .scene-meta-text { --scene-delay: .1s; }
+.scene-slot .progress-zone { --scene-delay: .15s; }
+.scene-slot .controls { --scene-delay: .2s; }
+
+/* 起点帧：进景览时 JS 先挂上这个类，等播控搬进 .scene-slot、布局稳定后
+   （封面也刚好飞满整屏）再撤掉。挂着的这段时间里各组停在下方、透明，
+   且没有过渡 —— 于是后搬进来的进度区 / 播控也有了自己的起点，
+   （重新插入 DOM 的元素若一开始就是终态，浏览器没有可插值的旧值，只能直接出现） */
+.scene-inner.scene-entering .scene-top,
+.scene-inner.scene-entering .scene-meta-text,
+.scene-inner.scene-entering .progress-zone,
+.scene-inner.scene-entering .controls,
+.scene-inner.scene-entering .scene-lyrics {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: none;
+}
 
 /* 日期做成一枚小玻璃胶囊，与时钟拉开层级 */
 .scene-date {
@@ -2181,22 +2288,23 @@ body.scene-open .scene-inner { opacity: 1; transform: none; }
     mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
 }
 
-/* 当前句背后的一小片磨砂：只盖歌词块中部，面积小、位置固定，
-   靠 backdrop-filter 提升文字与壁纸的对比，不用文字阴影 */
+/* 歌词底下的一层柔焦：底已经由 .scene-scrim 压下去了，
+   这里只负责把花纹糊平，让字的边缘不跟底下的图案抢 —
+   不叠色，所以不会在任何尺寸上显出「一块」的边界 */
 .scene-lyrics::before {
     content: '';
     position: absolute;
     left: 50%;
     top: 50%;
-    width: min(92%, 580px);
-    height: min(62%, 210px);
+    width: min(100%, 940px);
+    height: 100%;
     transform: translate(-50%, -50%);
-    border-radius: 38%;
+    border-radius: 40%;
     pointer-events: none;
-    -webkit-backdrop-filter: blur(16px) saturate(1.06);
-    backdrop-filter: blur(16px) saturate(1.06);
-    -webkit-mask-image: radial-gradient(closest-side, #000 32%, transparent 100%);
-    mask-image: radial-gradient(closest-side, #000 32%, transparent 100%);
+    -webkit-backdrop-filter: blur(26px) saturate(1.06);
+    backdrop-filter: blur(26px) saturate(1.06);
+    -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 30%, transparent 100%);
 }
 
 body.scene-open.scene-lyrics-on .scene-lyrics { display: block; }
@@ -2222,8 +2330,10 @@ body.scene-open.scene-lyrics-on .scene-lyrics { display: block; }
     font-weight: 600;
     line-height: 1.4;
     text-align: center;
-    color: color-mix(in oklab, var(--on-surface) 52%, transparent);
-    opacity: .82;
+    /* 非当前句：九成明度，仍要读得清 —— 再淡一点在亮壁纸上就只剩噪点。
+       只调明度、不加阴影、不加描边，保持 M3 的「层级靠色阶」而非「靠特效」 */
+    color: color-mix(in oklab, var(--on-surface) 90%, transparent);
+    opacity: 1;
     transform: scale(.96);
     transition: color .4s var(--ease-emphasized),
                 opacity .4s var(--ease-emphasized),

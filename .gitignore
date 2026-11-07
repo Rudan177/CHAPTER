@@ -1,3 +1,4 @@
 writer/
 .git/
 open-in-trae.sh
+.trae/

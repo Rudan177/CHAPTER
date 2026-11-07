@@ -84,6 +84,7 @@
     const aboutRegion = $('aboutRegion');
     const sceneLayer = $('sceneLayer');
     const sceneEl = $('scene');
+    const sceneInner = sceneEl.querySelector('.scene-inner');
     const sceneBg = $('sceneBg');
     const sceneDate = $('sceneDate');
     const sceneClock = $('sceneClock');
@@ -971,6 +972,9 @@
             lyricIdx = -1;
             lyricLine = null;
             updateLyric(audio.currentTime);   // 标签可能晚于起播才到达，立刻对齐到当前句
+            // 起播还没到第一句时 lyricIdx 一直是 -1，updateLyric 会因「行号没变」提前返回，
+            // 歌词就铺不出来 —— 这里补一次渲染，进景览能立刻看到整块歌词
+            renderSceneLyrics();
             setupMediaSession(coverObjectUrl);
 
             if (info.picture && 'Blob' in window) {
@@ -994,6 +998,23 @@
     // 时间标签：[mm:ss]、[mm:ss.xx]、[mm:ss.xxx]，小数分隔符也接受 ":"
     const LRC_TIME = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
 
+    // 版权 / 制作信息行：LRC 常把「词：…」「曲：…」「音乐统筹：…」带时间标签塞在开头。
+    // 这些行没有歌词价值，却会在景览里变成一串灰字浮在画面上，把整块读成一张表。
+    // 只按「角色字段」与「影视标题行」两种特征剔除，不碰正文。
+    // 角色词允许带常见修饰与后缀（总策划 / 联合出品人 / 音乐制作团队 / OP/SP …），
+    // 否则过滤掉一批还会露出下一批（有的 LRC 版权信息分好几段）
+    const LRC_CREDIT_LABEL =
+        '(?:(?:总|联合|音乐|制作|发行|出品|艺人|项目|宣发|特别)?' +
+        '(?:作词|作曲|编曲|词曲|制作|词|曲|演唱|原唱|出品人|出品|总监制|监制|统筹|营销|宣传|发行|' +
+        '录音|混音|母带|和声|吉他|贝斯|鼓手?|弦乐|钢琴|打击乐|人声|音频|视觉|设计|封面|摄影|' +
+        '文案|企划|策划|艺统|导演|指导|顾问|鸣谢|授权)' +
+        '(?:人|师|组|团队|公司|工作室|室|棚)?' +
+        '|(?:OP|SP)(?:\\s*\\/\\s*(?:OP|SP))*|ISRC)';
+    const LRC_CREDIT_ROLE = new RegExp(`^${LRC_CREDIT_LABEL}\\s*[:：]`, 'i');
+    const LRC_CREDIT_TITLE = /(?:主题曲|片尾曲|片头曲|插曲)\s*[）)》]?\s*[-–—]/;
+
+    const isCreditLine = (text) => LRC_CREDIT_ROLE.test(text) || LRC_CREDIT_TITLE.test(text);
+
     // LRC 文本 → [{ t: 秒, text }]，按时间升序；[ti:] 这类元数据行没有时间标签，自然被滤掉
     function parseLrc(raw) {
         if (!raw) return [];
@@ -1013,6 +1034,7 @@
             if (!times.length) continue;
             const text = line.slice(end).trim();
             if (!text) continue;                            // 间奏的空行不占位
+            if (isCreditLine(text)) continue;               // 版权 / 制作信息不占歌词位
             for (const t of times) rows.push({ t, text });  // 一句可以挂多个时间标签
         }
         return rows.sort((a, b) => a.t - b.t);
@@ -1147,7 +1169,7 @@
 
     /* ---------------- 播放列表 ---------------- */
     function isPlaylistOpen() {
-        return document.body.classList.contains('playlist-open');
+        return document.body.classList.contains('list-open');
     }
 
     function renderPlaylist() {
@@ -1292,7 +1314,9 @@
         playlistCard.classList.add('no-ease');
         // 用 offsetHeight 而不是 getBoundingClientRect：入场动画会给卡片加 scale，
         // 缩放后的盒高测出来偏小，会把行高定低、把内容裁掉几像素
-        const fullH = fullInner.offsetHeight;
+        // 景览期间进度区与播控被搬进景览，fullInner 量出来是残缺高度，
+        // 这时写回去会把收起态的卡片撑不够 —— 这一段只在主界面量，退出后搬回会自动重量
+        const fullH = sceneOpen ? 0 : fullInner.offsetHeight;
         const listH = playlistList.offsetHeight;
         if (fullH > 0) root.style.setProperty('--full-h', `${fullH}px`);
         if (listH > 0) playlistCard.style.setProperty('--list-h', `${listH}px`);
@@ -1304,19 +1328,23 @@
     new ResizeObserver(measureMorphHeights).observe(fullInner);
     new ResizeObserver(measureMorphHeights).observe(playlistList);
 
-    /* ---------------- 封面飞行（共享元素缩放） ----------------
-       卡片在「完整形态 ⇄ 长胶囊」之间收放时，封面作为共享元素一起缩放：
-       位置、尺寸、圆角由 CSS 过渡插值，与卡片行高共用 --morph-duration
+    /* ---------------- 封面飞行（共享元素） ----------------
+       封面作为共享元素在「完整形态 ⇄ 长胶囊」之间连续移动：
+       位置 / 尺寸 / 圆角由 CSS 过渡插值，与卡片行高共用 --morph-duration
        和同一条缓动曲线，因此速率天然一致。
-       飞行层绝对定位在 .player-card 内：坐标全部是卡片局部坐标，
-       卡片自身的位移由 DOM 自动携带，不存在逐帧跟随误差。
-       两个端点在两种形态下都是布局常量（大封面恒在 (pad, pad)，
+       飞行层绝对定位在 .player-card 内（卡片即定位上下文），
+       坐标是卡片局部坐标，卡片自身的位移由 DOM 自动携带。
+       两个端点在两种形态下都是布局常量（大封面恒在卡片内边距处，
        胶囊封面恒在 .player-mini 内的固定偏移），随时可量、无需切换状态，
-       也就不会污染 CSS 过渡的起始样式。 */
+       也就不会污染 CSS 过渡的起始样式。
+       景览整屏壁纸那一趟用 space='screen'：fixed + 视口坐标。 */
     let flyEl = null;
     let flyTarget = null;      // 当前飞行的终态几何
     let flyWatcher = 0;        // 收尾轮询的 rAF id
 
+    const radiusOf = (el) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+
+    // 卡片局部坐标（飞行层父级就是 .player-card）
     const rectInCard = (el) => {
         const r = el.getBoundingClientRect();
         const c = root.getBoundingClientRect();
@@ -1334,31 +1362,68 @@
         return { left: m.left - c.left, top: m.top - p.top, width: m.width, height: m.height };
     }
 
-    const radiusOf = (el) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+    // 视口坐标盒：景览整屏那一趟用（飞行层 fixed）
+    const viewportBox = (el) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, top: r.top, width: r.width, height: r.height };
+    };
+    const sceneBox = () => ({ left: 0, top: 0, width: window.innerWidth, height: window.innerHeight });
+
+    // 盒子是否真的可飞（隐藏 / 零尺寸的元素不能当端点）
+    const boxReady = (b) => !!b && b.width > 1 && b.height > 1;
 
     function coverSrc() {
         const front = coverImgAlt.classList.contains('is-front') ? coverImgAlt : coverImg;
         return front.getAttribute('src') || '';
     }
 
+    // 飞行落位时的一次性回调：景览要等封面飞满整屏、飞行层撤掉之后再放内容进场。
+    // 飞行层是 z-index 17 的不透明整屏，提前淡入的话那一层一撤，看到的是
+    // 「已经淡了一半的内容」—— 观感就是内容一下子冒出来
+    let flightEndHook = null;
+
     function cancelCoverFlight() {
         if (flyWatcher) { cancelAnimationFrame(flyWatcher); flyWatcher = 0; }
         if (flyEl) { flyEl.remove(); flyEl = null; }
         flyTarget = null;
         document.body.classList.remove('cover-flying');
+        if (flightEndHook) {
+            const hook = flightEndHook;
+            flightEndHook = null;
+            hook();
+        }
     }
 
-    // 飞行层到位就收尾（移除飞行层、恢复两处封面）。
+    // 把飞行层写向终态（含环绕中心的缩放：景览壁纸是 scale(1.04) 的盒）
+    function applyFlightTarget(to) {
+        flyEl.style.left = `${to.left}px`;
+        flyEl.style.top = `${to.top}px`;
+        flyEl.style.width = `${to.width}px`;
+        flyEl.style.height = `${to.height}px`;
+        flyEl.style.borderRadius = `${to.radius || 0}px`;
+        flyEl.style.transform = `scale(${to.scale || 1})`;
+        // 景览壁纸带轻微压暗，飞向整屏时滤镜一起过渡，落位与壁纸像素对齐
+        flyEl.style.filter = to.filter || 'none';
+    }
+
+    const scaleOf = (t) => {
+        if (!t || t === 'none') return 1;
+        const m = t.match(/matrix\(([^)]+)\)/);
+        return m ? parseFloat(m[1].split(',')[0]) : 1;
+    };
+
+    // 飞行层到位就收尾（移除飞行层、恢复各处封面）。
     // 三条触发路径互为兜底：transitionend 是常规路径；
     // 逐帧轮询覆盖「反向终点恰好等于当前几何、过渡根本没发生」的情况
-    // （此时没有 transitionend，飞行层会残留、两处封面一直被隐藏）；
+    // （此时没有 transitionend，飞行层会残留、各处封面一直被隐藏）；
     // 切换时再同步查一次，则连一帧都不必等。
     function settleCoverFlight() {
         if (!flyEl || !flyTarget) { cancelCoverFlight(); return true; }
         const cs = getComputedStyle(flyEl);
         const near = (v, target) => Math.abs(parseFloat(v) - target) < .5;
         if (near(cs.left, flyTarget.left) && near(cs.top, flyTarget.top) &&
-            near(cs.width, flyTarget.width) && near(cs.height, flyTarget.height)) {
+            near(cs.width, flyTarget.width) && near(cs.height, flyTarget.height) &&
+            Math.abs(scaleOf(cs.transform) - (flyTarget.scale || 1)) < .01) {
             cancelCoverFlight();
             return true;
         }
@@ -1374,43 +1439,48 @@
         flyWatcher = requestAnimationFrame(tick);
     }
 
-    // open=true：收起为胶囊（大封面 → 胶囊封面）；false：展开回完整形态
-    function flyCover(open) {
+    /**
+     * 让当前封面从 from 飞向 to。from / to 是同一坐标系下的盒子
+     * {left, top, width, height, radius?, scale?}。
+     * space='card'（默认）：卡片局部坐标，飞行层挂在 .player-card 内；
+     * space='screen'：视口坐标，飞行层 fixed 挂在 body 上，可越出卡片。
+     * 返回是否真的起了飞（无封面 / 端点不可见 / 减弱动效时为 false）。
+     */
+    function flyCoverBetween(from, to, space = 'card') {
         const src = coverSrc();
-        if (!src || reduceMotionMql.matches) { cancelCoverFlight(); return; }
+        if (!src || !boxReady(from) || !boxReady(to) || reduceMotionMql.matches) {
+            cancelCoverFlight();
+            return false;
+        }
 
-        const to = open ? miniCoverLocal() : rectInCard(coverEl);
-        const r1 = open ? radiusOf(miniCover) : radiusOf(coverEl);
+        if (flyEl && flyEl.dataset.space !== space) {
+            // 换了坐标系（例如刚关掉列表就进景览）：不能沿用旧层，重建一次
+            cancelCoverFlight();
+        }
 
         if (flyEl) {
             // 中途反向：保持飞行层当前几何，只把终点改回去。
-            // 浏览器会自动按已飞比例缩短反向时长，与卡片行高的反向过渡同步。
+            // 浏览器会自动按已飞比例缩短反向时长，与卡片展开的过渡同步。
             flyEl.style.backgroundImage = `url("${src}")`;
-            flyEl.style.left = `${to.left}px`;
-            flyEl.style.top = `${to.top}px`;
-            flyEl.style.width = `${to.width}px`;
-            flyEl.style.height = `${to.height}px`;
-            flyEl.style.borderRadius = `${r1}px`;
+            applyFlightTarget(to);
             flyTarget = { ...to };
             settleCoverFlight();
             watchCoverFlight();
-            return;
+            return true;
         }
 
-        // 起点几何：取当前形态下可见封面的真实位置
-        const from = open ? rectInCard(coverEl) : miniCoverLocal();
-        const r0 = open ? radiusOf(coverEl) : radiusOf(miniCover);
-        if (from.width < 1) { cancelCoverFlight(); return; }
-
         flyEl = document.createElement('div');
-        flyEl.className = 'cover-fly';
+        flyEl.className = space === 'screen' ? 'cover-fly is-screen' : 'cover-fly';
+        flyEl.dataset.space = space;
         flyEl.style.backgroundImage = `url("${src}")`;
         flyEl.style.left = `${from.left}px`;
         flyEl.style.top = `${from.top}px`;
         flyEl.style.width = `${from.width}px`;
         flyEl.style.height = `${from.height}px`;
-        flyEl.style.borderRadius = `${r0}px`;
-        root.appendChild(flyEl);
+        flyEl.style.borderRadius = `${from.radius || 0}px`;
+        flyEl.style.transform = `scale(${from.scale || 1})`;
+        flyEl.style.filter = from.filter || 'none';
+        (space === 'screen' ? document.body : root).appendChild(flyEl);
         document.body.classList.add('cover-flying');
         flyEl.addEventListener('transitionend', (e) => {
             if (e.target === flyEl && e.propertyName === 'width') settleCoverFlight();
@@ -1419,55 +1489,84 @@
         // 先无过渡地落到起点并提交样式，再开启过渡飞向终点
         void flyEl.offsetWidth;
         flyEl.classList.add('is-flying');
-        flyEl.style.left = `${to.left}px`;
-        flyEl.style.top = `${to.top}px`;
-        flyEl.style.width = `${to.width}px`;
-        flyEl.style.height = `${to.height}px`;
-        flyEl.style.borderRadius = `${r1}px`;
+        applyFlightTarget(to);
         flyTarget = { ...to };
         watchCoverFlight();
+        return true;
+    }
+
+    // open=true：播放器收成胶囊（大封面 → 胶囊封面）；false：展开回完整形态
+    function flyCover(open) {
+        const to = open ? miniCoverLocal() : rectInCard(coverEl);
+        const r1 = open ? radiusOf(miniCover) : radiusOf(coverEl);
+        const from = open ? rectInCard(coverEl) : miniCoverLocal();
+        const r0 = open ? radiusOf(coverEl) : radiusOf(miniCover);
+        return flyCoverBetween({ ...from, radius: r0 }, { ...to, radius: r1 }, 'card');
+    }
+
+    // 封面所在卡片的大封面盒（视口坐标，含圆角）
+    function cardCoverBox() {
+        const b = viewportBox(coverEl);
+        b.radius = radiusOf(coverEl);
+        return b;
     }
 
     /* ---------------- 播放列表开关 ----------------
-       列表整块搬进屏幕居中的浮层，主界面与景览共用同一套开合：
-       打开时播放器保持原样（不再收成胶囊），背景只做压暗 */
+       主界面沿用老做法：整条栈里播放器收成胶囊、列表在下方展开，
+       封面同时飞进胶囊封面，两者共用 --morph-duration，是一段连续形变。
+       景览视图里播放器卡片被摘出布局，列表改为屏幕居中的浮层。 */
     let playlistMoveTimer = 0;
 
     function setPlaylistOpen(open) {
         open = !!open;
         clearTimeout(playlistMoveTimer);
-        if (open) playlistPanel.appendChild(playlistCard);
-        document.body.classList.toggle('playlist-open', open);
+        // 景览下播放器不在布局里，列表只能借用居中浮层
+        const viaOverlay = sceneOpen && open;
+        if (viaOverlay) playlistPanel.appendChild(playlistCard);
+
+        // 先把可折叠区的高度量准，再切 class ——
+        // 若先切后量，量测加的 no-ease 会把刚开始的过渡直接掐断，观感就是「一下子闪开」
+        if (open) measureMorphHeights();
+
+        document.body.classList.toggle('list-open', open);
+        document.body.classList.toggle('playlist-open', viaOverlay);
+
         // 头部与播控里的按钮是同一个开合的两个入口，状态一起同步
         [btnPlaylist, btnPlaylistToggle].forEach((btn) => {
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
             btn.setAttribute('aria-label', open ? '收起播放列表' : '打开播放列表');
         });
         // 折叠的内容不可聚焦，防止 Tab / 点击落到看不见的控件上
+        playerFull.inert = open;
+        playerMini.inert = !open;
         playlistBody.inert = !open;
-        // 浮层打开时背后的播放器整层退出 Tab 序（景览里播控已搬出卡片，另算一次）
-        root.inert = open;
-        sceneEl.inert = open;
+        root.inert = viaOverlay;
+        sceneEl.inert = viaOverlay;
+
         if (open) {
-            measureMorphHeights();      // 卡片刚可见，重新量一次列表展开高度
-            // 等展开结束后再把当前曲目滚进视野，避免动画中被强制滚动
+            // 与卡片形变同帧起飞；两端点都是常量，先切后飞不影响几何
+            if (!sceneOpen) flyCover(true);
+            // 等形变结束后再把当前曲目滚进视野，避免动画中被强制滚动
             setTimeout(() => updateCurrentTrack(true), 680);
         } else {
-            // 浮层淡出走完再搬回栈里，收起过程不会突然跳位；
-            // 搬回时关掉卡片自身的入场动画，避免每次关闭都重新淡入一遍
-            playlistMoveTimer = setTimeout(() => {
-                if (isPlaylistOpen()) return;
-                playlistCard.style.animation = 'none';
-                playlistHost.appendChild(playlistCard);
-            }, 260);
+            if (!sceneOpen) flyCover(false);
+            // 景览里搬回栈中；主界面卡片本来就在栈里，无需搬动
+            if (playlistCard.parentElement === playlistPanel) {
+                playlistMoveTimer = setTimeout(() => {
+                    if (isPlaylistOpen()) return;
+                    playlistCard.style.animation = 'none';
+                    playlistHost.appendChild(playlistCard);
+                }, 260);
+            }
         }
     }
 
     btnPlaylist.addEventListener('click', () => setPlaylistOpen(!isPlaylistOpen()));
     btnMiniOpen.addEventListener('click', () => setPlaylistOpen(false));
 
-    // 点浮层空白（卡片以外）也能关
+    // 景览里点浮层空白（卡片以外）也能关；主界面没有浮层
     playlistOverlay.addEventListener('click', (e) => {
+        if (!sceneOpen) return;
         if (e.target.closest && e.target.closest('#playlistCard')) return;
         setPlaylistOpen(false);
     });
@@ -2202,6 +2301,22 @@
         new ResizeObserver(() => centerSceneLyrics(false)).observe(sceneLyrics);
     }
 
+    let sceneMoveTimer = 0;
+
+    // 封面飞成整屏壁纸时的调色，必须与 CSS 里 .scene-bg 的 filter 完全一致：
+    // 落位那一帧飞行层被撤掉，两者若差一点，画面会跳一下
+    const SCENE_GRADE = 'brightness(.9) saturate(1.06)';
+
+    // 搬动 = 重新插入 DOM，浏览器会把节点上的 CSS 动画重新放一遍（rise 入场动画）。
+    // 这几块早就处在终态，重放只会让它们「迟一步从透明里冒出来」，
+    // 所以搬的同时把动画关掉，后续进出一律直接是终态
+    function movePanelWithNoAnim(host) {
+        SCENE_SLOT_ORDER.forEach((el) => {
+            host.appendChild(el);
+            el.style.animation = 'none';
+        });
+    }
+
     /* 进出的唯一开关：菜单里的勾选项走它。
        进入 = 把进度区与播控搬进 .scene-slot；退出 = 各自按原位置搬回。
        视觉切换全部交给 body.scene-open 上的 CSS 过渡 */
@@ -2215,15 +2330,66 @@
         if (isPlaylistOpen()) setPlaylistOpen(false);
 
         if (on) {
+            // 卡片即将被摘出布局，先量好大封面位置，进场时由它飞成整屏壁纸
+            const from = cardCoverBox();
             syncSceneCover();
             syncSceneMeta();
             startSceneClock();
-            SCENE_SLOT_ORDER.forEach((el) => sceneSlot.appendChild(el));
+            // 起点帧先挂上：各组先停在下方、透明、微虚化的位置，且不带过渡。
+            // 之后搬进来的进度区 / 播控也因此有了可插值的旧值
+            sceneInner.classList.add('scene-entering');
             document.body.classList.add('scene-open');
+            // 终点与 .scene-bg 的 scale(1.04) + 同一套调色一致，落位那一下与壁纸严丝合缝
+            const flying = !!from &&
+                flyCoverBetween(from, { ...sceneBox(), scale: 1.04, filter: SCENE_GRADE }, 'screen');
+
+            let moved = false;
+            const moveNow = () => {
+                if (moved || !sceneOpen) return;
+                moved = true;
+                movePanelWithNoAnim(sceneSlot);
+            };
+            // 放行 = 撤掉起点帧，各部件按 CSS 里的 --scene-delay 依次铺开。
+            // 两帧：先让搬进来的控件以起点态上屏一帧，再放开过渡 ——
+            // 只等一帧时样式重算可能被合并，控件的起点会被浏览器抹掉
+            const release = () => {
+                moveNow();
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (sceneOpen) sceneInner.classList.remove('scene-entering');
+                    });
+                });
+            };
+
+            // 搬控件与放行放在同一时刻：有封面飞行时等它落满整屏、飞行层撤掉那一帧 ——
+            // 这时候整层已经完全不透明，卡片里「先空出一块」的搬动完全看不见；
+            // 提前搬的话会透过半透明的暗层看到卡片的空洞
+            clearTimeout(sceneMoveTimer);
+            if (flying) {
+                flightEndHook = () => { if (sceneOpen) release(); };
+                // 起飞即落位（终点与当前几何重合、没有可等的过渡）：不等回调，直接放行
+                if (!document.body.classList.contains('cover-flying')) {
+                    flightEndHook = null;
+                    release();
+                }
+            } else {
+                // 没有飞行层（无封面 / 减弱动效）：压暗走完后再搬并放行
+                sceneMoveTimer = setTimeout(release, reduceMotionMql.matches ? 0 : 300);
+            }
         } else {
             stopSceneClock();
-            SCENE_SLOT_ORDER.forEach((el) => panelEl.appendChild(el));
+            clearTimeout(sceneMoveTimer);
+            flightEndHook = null;       // 取消还没落位的进场回调
+            sceneInner.classList.remove('scene-entering');
+            // 退出时景览层还是全不透明的，立刻搬回；主界面一恢复就是完整的
+            movePanelWithNoAnim(panelEl);
             document.body.classList.remove('scene-open');
+            // 退出：从整屏壁纸缩回卡片大封面（卡片刚恢复布局，此刻可量）
+            flyCoverBetween(
+                { ...sceneBox(), scale: 1.04, filter: SCENE_GRADE },
+                cardCoverBox(),
+                'screen'
+            );
         }
         // 滑条宽度随宿主变化：重新量轨道，再按当前进度写一次手柄位置
         measureTrack();
@@ -2628,10 +2794,11 @@
     applyTrackNav();
     applyMoreControls();
     applyPlaylistVisible();
+    // 先量形态高度再进景览：进了景览播控就被搬走，那时候量到的是残缺高度
+    measureMorphHeights();
     setSceneMode(prefs.scene);   // 上次退出时若停在景览模式，这次直接回到这里
     playerMini.inert = true;
     playlistBody.inert = true;
-    measureMorphHeights();
     // 字体变化会影响两处自然高度，加载完再量一次
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureMorphHeights);
     loadPlaylist();
