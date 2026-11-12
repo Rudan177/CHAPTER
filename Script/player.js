@@ -1279,7 +1279,11 @@
                 date: String(it.date || ''),
                 official: String(it.type || '').toLowerCase() === 'official',
                 duration: parseDuration(it.duration),   // "216s" / "3:36" / 216
-                url: `${LOG_BASE}mp3/${encodeURIComponent(`${it.name} - ${it.artist}`)}.mp3`,
+                // 艺术家里出现「/」等文件系统非法字符时，磁盘上的文件名会变成「_」，
+                // 这里同样替换一次，否则拼出的 URL 找不到文件（如「不及」「无中生有」）
+                url: `${LOG_BASE}mp3/${encodeURIComponent(
+                    `${it.name} - ${it.artist}`.replace(/[\\/:*?"<>|]/g, '_')
+                )}.mp3`,
             }));
         } catch (err) {
             console.info('播放清单获取失败，仅保留固定首曲：', err && err.message);
